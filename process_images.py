@@ -97,5 +97,6 @@ if __name__ == '__main__':
     
     xatol = 0.01
     frame_interval = 15  # Calculate centers for every 100th frame (always including first and last).
+    
+    process_images(image_file, mask, xatol=xatol, frame_interval=frame_interval)
 
-    process_images(image_file, mask, xatol, frame_interval)
