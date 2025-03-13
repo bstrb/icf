@@ -10,13 +10,14 @@ from image_processing import process_single_image
 
 def load_chunk(image_file, start, end):
     """
-    Load a chunk of images from the H5 file.
+    Load a chunk of images and indices from the H5 file.
     Slicing the dataset loads only the required subset.
     """
     with h5py.File(image_file, 'r') as f:
         images = f['/entry/data/images']
-        chunk = images[start:end].astype(np.float32)
-    return chunk
+        chunk_images = images[start:end].astype(np.float32)
+        indices = f['/entry/data/index'][start:end]
+    return chunk_images, indices
 
 def process_images(image_file, mask, n_wedges=4, n_rad_bins=100, xatol=0.01, fatol=10, chunk_size=1000, frame_interval=10, verbose=False):
     # Open the image file to determine the total number of images.
@@ -50,7 +51,8 @@ def process_images(image_file, mask, n_wedges=4, n_rad_bins=100, xatol=0.01, fat
             if not chunk_frame_indices:
                 continue  # Skip this chunk if no frames meet the criteria.
 
-            current_chunk = load_chunk(image_file, start_idx, end_idx)
+            # Load both images and indices for the current chunk.
+            current_chunk, current_indices = load_chunk(image_file, start_idx, end_idx)
 
             # Prepare arguments for each selected image.
             args = [
@@ -61,10 +63,10 @@ def process_images(image_file, mask, n_wedges=4, n_rad_bins=100, xatol=0.01, fat
             # Process selected images in parallel.
             results = pool.starmap(process_single_image, args)
 
-            # Write results incrementally.
+            # Write results incrementally. The CSV now includes the original data index.
             df_chunk = pd.DataFrame(
-                [[i, res[0], res[1]] for i, res in zip(chunk_frame_indices, results)],
-                columns=["frame_number", "center_x", "center_y"]
+                [[i, current_indices[i - start_idx], res[0], res[1]] for i, res in zip(chunk_frame_indices, results)],
+                columns=["frame_number", "data_index", "center_x", "center_y"]
             )
             mode = "w" if not header_written else "a"
             df_chunk.to_csv(csv_file, index=False, mode=mode, header=not header_written)
@@ -96,7 +98,6 @@ if __name__ == '__main__':
             mask = np.ones_like(sample_mask, dtype=bool)
     
     xatol = 0.01
-    frame_interval = 15  # Calculate centers for every 100th frame (always including first and last).
+    frame_interval = 5  # Calculate centers for every 15th frame (always including first and last).
     
     process_images(image_file, mask, xatol=xatol, frame_interval=frame_interval)
-
