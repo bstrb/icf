@@ -119,10 +119,12 @@ def on_process_csv_clicked(b):
         axs[1].legend()
         plt.show()
 
-        # Write final CSV
+        # Get the basename of the input CSV without the extension.
+        base_name = os.path.splitext(os.path.basename(input_csv))[0]
+
         _shifted_csv_path[0] = os.path.join(
             os.path.dirname(input_csv),
-            f"centers_lowess_{frac_val:.2f}_shifted.csv"
+            f"{base_name}_lowess_{frac_val:.2f}_shifted_{shift_x}_{shift_y}.csv"
         )
         df_smoothed.to_csv(_shifted_csv_path[0], index=False)
         print(f"Smoothed CSV saved:\n{_shifted_csv_path[0]}")
@@ -158,10 +160,20 @@ def on_update_h5_clicked(b):
             print("Please select an H5 file to update.")
             return
 
-        new_h5_path = os.path.join(
-            os.path.dirname(image_file),
-            os.path.splitext(os.path.basename(_shifted_csv_path[0]))[0] + '.h5'
-        )
+        # new_h5_path = os.path.join(
+        #     os.path.dirname(image_file),
+        #     os.path.splitext(os.path.basename(_shifted_csv_path[0]))[0] + '.h5'
+        # )
+
+        # Extract the base name (without extension) from _shifted_csv_path[0]
+        base_name = os.path.splitext(os.path.basename(_shifted_csv_path[0]))[0]
+
+        # Create a subfolder in the image file's directory named with the base_name
+        subfolder_path = os.path.join(os.path.dirname(image_file), base_name)
+        os.makedirs(subfolder_path, exist_ok=True)
+
+        # Create the new H5 file path inside the subfolder with the same base name
+        new_h5_path = os.path.join(subfolder_path, base_name + '.h5')
 
         try:
             create_updated_h5(image_file, new_h5_path, _shifted_csv_path[0])
