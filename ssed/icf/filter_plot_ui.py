@@ -21,7 +21,7 @@ def get_ui():
     # Output area where the interactive filtering UI will be built.
     interactive_output = Output()
     
-    # State dictionary to store the loaded DataFrame and its file path.
+    # Dictionary to store the loaded DataFrame and its file path.
     state = {"df": None, "csv_path": None}
     
     def build_interactive_ui():
@@ -44,66 +44,97 @@ def get_ui():
             if df.empty:
                 print("No data loaded. Exiting.")
                 return
+            
             x_min, x_max = x_range
             y_min, y_max = y_range
             
-            # Filter data based on the slider values.
-            filtered = df[
-                (df['center_x'] >= x_min) & (df['center_x'] <= x_max) &
-                (df['center_y'] >= y_min) & (df['center_y'] <= y_max)
-            ]
+            # Create a copy of the DataFrame to modify.
+            df_filtered = df.copy()
+            # Ensure center_x and center_y can store empty strings.
+            df_filtered['center_x'] = df_filtered['center_x'].astype(object)
+            df_filtered['center_y'] = df_filtered['center_y'].astype(object)
             
-            # Optionally remove outliers.
+            # Create mask for rows with center values within the selected range.
+            mask_range = (
+                (df_filtered['center_x'].astype(float) >= x_min) & 
+                (df_filtered['center_x'].astype(float) <= x_max) &
+                (df_filtered['center_y'].astype(float) >= y_min) & 
+                (df_filtered['center_y'].astype(float) <= y_max)
+            )
+            
+            # If outlier removal is enabled, compute additional mask on the in-range rows.
             if remove_outliers:
-                x_mean = filtered['center_x'].mean()
-                x_std = filtered['center_x'].std()
-                y_mean = filtered['center_y'].mean()
-                y_std = filtered['center_y'].std()
-                filtered = filtered[
-                    (abs(filtered['center_x'] - x_mean) <= outlier_std * x_std) &
-                    (abs(filtered['center_y'] - y_mean) <= outlier_std * y_std)
-                ]
-                print(f"Outliers removed using threshold: {outlier_std} standard deviations.")
+                valid_in_range = df_filtered[mask_range].copy()
+                # Convert to float for calculations.
+                valid_in_range['center_x'] = valid_in_range['center_x'].astype(float)
+                valid_in_range['center_y'] = valid_in_range['center_y'].astype(float)
+                if not valid_in_range.empty:
+                    x_mean = valid_in_range['center_x'].mean()
+                    x_std = valid_in_range['center_x'].std()
+                    y_mean = valid_in_range['center_y'].mean()
+                    y_std = valid_in_range['center_y'].std()
+                    mask_outlier = (
+                        (abs(df_filtered['center_x'].astype(float) - x_mean) <= outlier_std * x_std) &
+                        (abs(df_filtered['center_y'].astype(float) - y_mean) <= outlier_std * y_std)
+                    )
+                else:
+                    mask_outlier = mask_range
+                valid_mask = mask_range & mask_outlier
+            else:
+                valid_mask = mask_range
             
-            # Print descriptive statistics.
-            print("=== Filtered Data Statistics ===")
-            print(f"Number of rows: {len(filtered)}")
+            # For rows that do not satisfy the filter, replace center_x and center_y with empty strings.
+            df_filtered.loc[~valid_mask, ['center_x', 'center_y']] = ""
+            
+            # Print statistics only for the valid rows.
+            valid_rows = df_filtered[valid_mask]
+            print("=== Valid Data Statistics ===")
+            print(f"Number of valid rows: {len(valid_rows)} out of {len(df_filtered)}")
             for col in ['center_x', 'center_y']:
-                mean_val = filtered[col].mean()
-                median_val = filtered[col].median()
-                std_val = filtered[col].std()
-                print(f"{col} => mean: {mean_val:.3f}, median: {median_val:.3f}, std: {std_val:.3f}")
+                # Convert to float for calculation if possible.
+                try:
+                    valid_floats = valid_rows[col].astype(float)
+                    mean_val = valid_floats.mean()
+                    median_val = valid_floats.median()
+                    std_val = valid_floats.std()
+                    print(f"{col} => mean: {mean_val:.3f}, median: {median_val:.3f}, std: {std_val:.3f}")
+                except Exception:
+                    print(f"{col} has non-numeric values.")
             
-            # Save filtered CSV in the same folder as the loaded file.
+            # Save the modified CSV in the same folder as the input.
             output_folder = os.path.dirname(csv_path)
             output_filename = os.path.join(output_folder, "filtered_centers.csv")
-            filtered.to_csv(output_filename, index=False)
+            df_filtered.to_csv(output_filename, index=False)
             print(f"\nFiltered CSV saved to: {output_filename}\n")
             
-            # Scatter plot.
+            # Plot scatter using only the valid rows (converted back to float for plotting).
+            valid_rows_numeric = valid_rows.copy()
+            valid_rows_numeric['center_x'] = valid_rows_numeric['center_x'].apply(lambda v: float(v) if v != "" else None)
+            valid_rows_numeric['center_y'] = valid_rows_numeric['center_y'].apply(lambda v: float(v) if v != "" else None)
+            valid_rows_numeric = valid_rows_numeric.dropna(subset=['center_x', 'center_y'])
             plt.figure(figsize=(8, 6))
-            plt.scatter(filtered['center_x'], filtered['center_y'], marker='o')
+            plt.scatter(valid_rows_numeric['center_x'], valid_rows_numeric['center_y'], marker='o')
             plt.xlabel('Center X')
             plt.ylabel('Center Y')
-            plt.title('Scatter Plot of Center Coordinates')
+            plt.title('Scatter Plot of Valid Center Coordinates')
             plt.grid(True)
             plt.show()
             
-            # Histogram for center_x.
+            # Plot histogram for center_x.
             plt.figure(figsize=(8, 6))
-            plt.hist(filtered['center_x'], bins=30, edgecolor='black')
+            plt.hist(valid_rows_numeric['center_x'], bins=30, edgecolor='black')
             plt.xlabel('Center X')
             plt.ylabel('Frequency')
-            plt.title('Histogram of Center X')
+            plt.title('Histogram of Valid Center X')
             plt.grid(True)
             plt.show()
             
-            # Histogram for center_y.
+            # Plot histogram for center_y.
             plt.figure(figsize=(8, 6))
-            plt.hist(filtered['center_y'], bins=30, edgecolor='black')
+            plt.hist(valid_rows_numeric['center_y'], bins=30, edgecolor='black')
             plt.xlabel('Center Y')
             plt.ylabel('Frequency')
-            plt.title('Histogram of Center Y')
+            plt.title('Histogram of Valid Center Y')
             plt.grid(True)
             plt.show()
         

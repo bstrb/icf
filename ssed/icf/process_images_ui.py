@@ -150,10 +150,10 @@ xatol_widget = widgets.FloatText(value=0.01, description="xatol:", layout=widget
 frame_interval_widget = widgets.IntText(value=10, description="Interval:", layout=widgets.Layout(width="140px"))
 verbose_checkbox = widgets.Checkbox(value=False, description="Verbose")
 
-xmin_widget = widgets.IntText(value=0, description="xmin:", layout=widgets.Layout(width="140px"))
-xmax_widget = widgets.IntText(value=2048, description="xmax:", layout=widgets.Layout(width="140px"))
-ymin_widget = widgets.IntText(value=0, description="ymin:", layout=widgets.Layout(width="140px"))
-ymax_widget = widgets.IntText(value=2048, description="ymax:", layout=widgets.Layout(width="140px"))
+xmin_widget = widgets.IntText(value=462, description="xmin:", layout=widgets.Layout(width="140px"))
+xmax_widget = widgets.IntText(value=562, description="xmax:", layout=widgets.Layout(width="140px"))
+ymin_widget = widgets.IntText(value=462, description="ymin:", layout=widgets.Layout(width="140px"))
+ymax_widget = widgets.IntText(value=562, description="ymax:", layout=widgets.Layout(width="140px"))
 
 process_images_button = widgets.Button(description="Process Images", button_style="primary")
 output_area = widgets.Output(layout={'border': '1px solid black', 'padding': '5px'})
