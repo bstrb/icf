@@ -11,18 +11,7 @@ try:
 except ImportError:
     print("ipyfilechooser is required. Install with: pip install ipyfilechooser")
 
-# Try to import your refinement function.
-import_failed = False
-import_error_msg = ""
-refmac_import_out = widgets.Output(layout={'border': '1px solid black', 'padding': '5px'})
-with refmac_import_out:
-    try:
-        from .ctruncate_freerflag_refmac5 import ctruncate_freerflag_refmac5  # Update module name/path if needed.
-        print("Successfully imported ctruncate_freerflag_refmac5.")
-    except Exception as e:
-        import_failed = True
-        import_error_msg = str(e)
-        print("Error importing ctruncate_freerflag_refmac5:", e)
+from .ctruncate_freerflag_refmac5 import ctruncate_freerflag_refmac5
 
 def parse_refmac_log_for_table(log_path):
     """
@@ -95,132 +84,123 @@ def get_ui():
     """
     Returns the full Refmac5 refinement and plot UI as a widget.
     """
-    if not import_failed:
-        # File choosers for input files.
-        mtz_file_chooser = FileChooser(os.getcwd())
-        mtz_file_chooser.title = 'Select .mtz File'
-        mtz_file_chooser.filter_pattern = '*.mtz'
+    # File choosers for input files.
+    mtz_file_chooser = FileChooser(os.getcwd())
+    mtz_file_chooser.title = 'Select .mtz File'
+    mtz_file_chooser.filter_pattern = '*.mtz'
+    
+    pdb_file_chooser = FileChooser(os.getcwd())
+    pdb_file_chooser.title = 'Select .pdb File'
+    pdb_file_chooser.filter_pattern = '*.pdb'
+    
+    # Extra parameter widgets.
+    max_res_widget = widgets.FloatText(
+        value=20.0,
+        description="max_res:",
+        style={"description_width": "80px"},
+        layout=widgets.Layout(width='200px')
+    )
+    min_res_widget = widgets.FloatText(
+        value=1.5,
+        description="min_res:",
+        style={"description_width": "80px"},
+        layout=widgets.Layout(width='200px')
+    )
+    ncycles_widget = widgets.IntText(
+        value=30,
+        description="ncycles:",
+        style={"description_width": "80px"},
+        layout=widgets.Layout(width='200px')
+    )
+    bins_widget = widgets.IntText(
+        value=10,
+        description="bins:",
+        style={"description_width": "80px"},
+        layout=widgets.Layout(width='200px')
+    )
+    
+    extra_params_box = widgets.HBox([max_res_widget, min_res_widget, ncycles_widget, bins_widget])
+    
+    # Refine button.
+    refine_button = widgets.Button(
+        description="Refine with Refmac5 (and Plot)",
+        button_style='info'
+    )
+    
+    @refmac_feedback_out.capture(clear_output=False)
+    def on_refine_clicked(b):
+        print("\n" + "="*50)
+        print("REFMAC5 REFINEMENT + TABLE PARSING & PLOTTING")
+        print("="*50)
         
-        pdb_file_chooser = FileChooser(os.getcwd())
-        pdb_file_chooser.title = 'Select .pdb File'
-        pdb_file_chooser.filter_pattern = '*.pdb'
+        mtz_file = mtz_file_chooser.selected
+        pdb_file = pdb_file_chooser.selected
         
-        # Extra parameter widgets.
-        max_res_widget = widgets.FloatText(
-            value=20.0,
-            description="max_res:",
-            style={"description_width": "80px"},
-            layout=widgets.Layout(width='200px')
-        )
-        min_res_widget = widgets.FloatText(
-            value=1.5,
-            description="min_res:",
-            style={"description_width": "80px"},
-            layout=widgets.Layout(width='200px')
-        )
-        ncycles_widget = widgets.IntText(
-            value=30,
-            description="ncycles:",
-            style={"description_width": "80px"},
-            layout=widgets.Layout(width='200px')
-        )
-        bins_widget = widgets.IntText(
-            value=10,
-            description="bins:",
-            style={"description_width": "80px"},
-            layout=widgets.Layout(width='200px')
-        )
+        if not mtz_file:
+            print("Please select an MTZ file first.")
+            return
+        if not pdb_file:
+            print("Please select a PDB file first.")
+            return
         
-        extra_params_box = widgets.HBox([max_res_widget, min_res_widget, ncycles_widget, bins_widget])
+        max_res = max_res_widget.value
+        min_res = min_res_widget.value
+        ncycles = ncycles_widget.value
+        bins_ = bins_widget.value
         
-        # Refine button.
-        refine_button = widgets.Button(
-            description="Refine with Refmac5 (and Plot)",
-            button_style='info'
-        )
+        print(f"Running refinement with parameters:\n  MTZ: {mtz_file}\n  PDB: {pdb_file}\n  max_res: {max_res}\n  min_res: {min_res}\n  ncycles: {ncycles}\n  bins: {bins_}")
         
-        @refmac_feedback_out.capture(clear_output=False)
-        def on_refine_clicked(b):
-            print("\n" + "="*50)
-            print("REFMAC5 REFINEMENT + TABLE PARSING & PLOTTING")
-            print("="*50)
-            
-            mtz_file = mtz_file_chooser.selected
-            pdb_file = pdb_file_chooser.selected
-            
-            if not mtz_file:
-                print("Please select an MTZ file first.")
-                return
-            if not pdb_file:
-                print("Please select a PDB file first.")
-                return
-            
-            max_res = max_res_widget.value
-            min_res = min_res_widget.value
-            ncycles = ncycles_widget.value
-            bins_ = bins_widget.value
-            
-            print(f"Running refinement with parameters:\n  MTZ: {mtz_file}\n  PDB: {pdb_file}\n  max_res: {max_res}\n  min_res: {min_res}\n  ncycles: {ncycles}\n  bins: {bins_}")
-            
-            # Run the refinement function; it should return a string output directory.
-            output_dir = ctruncate_freerflag_refmac5(mtz_file, pdb_file, max_res=max_res, min_res=min_res, ncycles=ncycles, bins=bins_)
-            
-            print("Refinement completed.")
-            if output_dir is None:
-                print("No output directory returned. Cannot locate refmac5.log for plotting.")
-                return
-            
-            log_file_path = os.path.join(output_dir, "refmac5.log")
-            if not os.path.isfile(log_file_path):
-                print(f"refmac5.log not found at {log_file_path}. Skipping plot.")
-                return
-            
-            resolution_list, rf_used_list = parse_refmac_log_for_table(log_file_path)
-            if not resolution_list:
-                print("No valid table found in refmac5.log, or columns didn't parse. Skipping plot.")
-                return
-            
-            # Sort the data by resolution (ascending).
-            sorted_pairs = sorted(zip(resolution_list, rf_used_list), key=lambda x: x[0])
-            sorted_res, sorted_rf = zip(*sorted_pairs)
-            
-            plt.figure(figsize=(6, 4))
-            plt.plot(sorted_res, sorted_rf, marker='o', linestyle='-')
-            plt.xlabel("Resolution (Å)")
-            plt.ylabel("Rf_used")
-            plt.title("Rf_used vs. Resolution")
-            plt.grid(True)
-            plt.gca().invert_xaxis()  # Flip the x-axis so high resolutions appear on the left.
-            plt.tight_layout()
-            plt.show()
+        # Run the refinement function; it should return a string output directory.
+        output_dir = ctruncate_freerflag_refmac5(mtz_file, pdb_file, max_res=max_res, min_res=min_res, ncycles=ncycles, bins=bins_)
         
-        refine_button.on_click(on_refine_clicked)
+        print("Refinement completed.")
+        if output_dir is None:
+            print("No output directory returned. Cannot locate refmac5.log for plotting.")
+            return
         
-        refine_controls = widgets.VBox([
-            widgets.HTML("<h3>Refmac5 Refinement (with Table Parsing & Plot)</h3>"),
-            mtz_file_chooser,
-            pdb_file_chooser,
-            widgets.HTML("<h4>Optional Parameters</h4>"),
-            extra_params_box,
-            refine_button
-        ])
+        log_file_path = os.path.join(output_dir, "refmac5.log")
+        if not os.path.isfile(log_file_path):
+            print(f"refmac5.log not found at {log_file_path}. Skipping plot.")
+            return
         
-        final_layout = widgets.VBox([
-            refmac_import_out,
-            widgets.HTML("<h2>Refmac5 Refinement & Plot Tool</h2>"),
-            refine_controls,
-            widgets.HTML("<h3>Logs & Feedback</h3>"),
-            refmac_feedback_out
-        ])
+        resolution_list, rf_used_list = parse_refmac_log_for_table(log_file_path)
+        if not resolution_list:
+            print("No valid table found in refmac5.log, or columns didn't parse. Skipping plot.")
+            return
         
-        return final_layout
-    else:
-        error_ui = widgets.VBox([
-            refmac_import_out,
-            widgets.HTML("<b>Could not load ctruncate_freerflag_refmac5:</b>"),
-            widgets.HTML(import_error_msg)
-        ])
-        return error_ui
+        # Sort the data by resolution (ascending).
+        sorted_pairs = sorted(zip(resolution_list, rf_used_list), key=lambda x: x[0])
+        sorted_res, sorted_rf = zip(*sorted_pairs)
+        
+        plt.figure(figsize=(6, 4))
+        plt.plot(sorted_res, sorted_rf, marker='o', linestyle='-')
+        plt.xlabel("Resolution (Å)")
+        plt.ylabel("Rf_used")
+        plt.title("Rf_used vs. Resolution")
+        plt.grid(True)
+        plt.gca().invert_xaxis()  # Flip the x-axis so high resolutions appear on the left.
+        plt.tight_layout()
+        plt.show()
+    
+    refine_button.on_click(on_refine_clicked)
+    
+    refine_controls = widgets.VBox([
+        widgets.HTML("<h3>Refmac5 Refinement (with Table Parsing & Plot)</h3>"),
+        mtz_file_chooser,
+        pdb_file_chooser,
+        widgets.HTML("<h4>Optional Parameters</h4>"),
+        extra_params_box,
+        refine_button
+    ])
+    
+    final_layout = widgets.VBox([
+        widgets.HTML("<h2>Refmac5 Refinement & Plot Tool</h2>"),
+        refine_controls,
+        widgets.HTML("<h3>Logs & Feedback</h3>"),
+        refmac_feedback_out
+    ])
+    
+    return final_layout
 
 if __name__ == '__main__':
     ui = get_ui()

@@ -9,24 +9,13 @@ try:
 except ImportError:
     print("ipyfilechooser not found. Install via: pip install ipyfilechooser")
 
+from .merge import merge
+from .convert_hkl_crystfel_to_shelx import convert_hkl_crystfel_to_shelx 
+from .convert_hkl_to_mtz import convert_hkl_to_mtz
+
 def get_ui():
     # Local variable to store merged output directory.
     global_output_dir = None
-
-    # Try to import your custom modules.
-    import_failed = False
-    import_error_msg = ""
-    modules_import_out = widgets.Output(layout={'border': '1px solid black', 'padding': '5px'})
-    with modules_import_out:
-        try:
-            from .merge import merge
-            from .convert_hkl_crystfel_to_shelx import convert_hkl_crystfel_to_shelx 
-            from .convert_hkl_to_mtz import convert_hkl_to_mtz
-            print("Successfully imported merge, convert_hkl_crystfel_to_shelx, and convert_hkl_to_mtz modules.")
-        except Exception as e:
-            import_failed = True
-            import_error_msg = str(e)
-            print("Error importing modules:", e)
 
     # A single output widget to capture feedback from all operations.
     feedback_out = widgets.Output(
@@ -37,15 +26,6 @@ def get_ui():
             'padding': '5px'
         }
     )
-
-    # If module imports failed, return a UI that displays the error.
-    if import_failed:
-        error_ui = widgets.VBox([
-            modules_import_out,
-            widgets.HTML("<b>Could not load your modules:</b>"),
-            widgets.HTML(import_error_msg)
-        ])
-        return error_ui
 
     #################################
     # 1) Merging Section
@@ -207,7 +187,6 @@ def get_ui():
     # 4) Display All Controls
     #################################
     controls_layout = widgets.VBox([
-        modules_import_out,
         widgets.HTML("<h2>Interactive Merging & Conversion Tool</h2>"),
         merge_controls,
         shelx_controls,

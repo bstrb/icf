@@ -1,34 +1,22 @@
 import ipywidgets as widgets
-from IPython.display import display, Markdown, clear_output
+from IPython.display import display, clear_output
 from ipyfilechooser import FileChooser
 import matplotlib.pyplot as plt
 import os
 import time
 
 # Import your custom modules (assumed to be available in your PYTHONPATH)
-try:
-    from .csv_to_stream import write_stream_from_filtered_csv
-    from .interactive_iqm import (
-        read_metric_csv,
-        select_best_results_by_event,
-        get_metric_ranges,
-        create_combined_metric,
-        filter_rows,
-        write_filtered_csv
-    )
-    MODULES_LOADED = True
-except Exception as e:
-    MODULES_LOADED = False
-    IMPORT_ERROR = str(e)
+from .csv_to_stream import write_stream_from_filtered_csv
+from .interactive_iqm import (
+    read_metric_csv,
+    select_best_results_by_event,
+    get_metric_ranges,
+    create_combined_metric,
+    filter_rows,
+    write_filtered_csv
+)
 
 def get_ui():
-    # Display module import status
-    module_import_out = widgets.Output(layout={'border': '1px solid black', 'padding': '5px'})
-    with module_import_out:
-        if MODULES_LOADED:
-            print("Successfully imported 'csv_to_stream' and 'interactive_iqm' modules.")
-        else:
-            print("Error importing modules:", IMPORT_ERROR)
     
     # CSV File Selection Section
     csv_file_chooser = FileChooser("")
@@ -357,7 +345,6 @@ def get_ui():
     
     # Create the final UI layout.
     main_ui = widgets.VBox([
-        module_import_out,
         widgets.HTML("<h3>Select CSV file with normalized metrics:</h3>"),
         csv_file_chooser,
         load_csv_button,

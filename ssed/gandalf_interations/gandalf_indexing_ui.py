@@ -1,7 +1,7 @@
 import ipywidgets as widgets
 from IPython.display import display, clear_output
 from ipyfilechooser import FileChooser
-from .gandalf_radial_iterator import gandalf_iterator  # Ensure this module is importable
+from .gandalf_radial_iterator import gandalf_iterator 
 
 # Define default peakfinder options.
 default_peakfinder_options = {
@@ -39,7 +39,7 @@ def create_indexing_section():
 
     # Other basic parameters as text or numeric widgets
     output_base_text = widgets.Text(
-        value="UOX", 
+        value="Xtal", 
         description="Output Base:", 
         layout=widgets.Layout(width='400px')
     )
@@ -48,7 +48,7 @@ def create_indexing_section():
         description="Threads:"
     )
     max_radius_float = widgets.FloatText(
-        value=1.0, 
+        value=1.8, 
         description="Max Radius:"
     )
     step_float = widgets.FloatText(
