@@ -68,14 +68,15 @@ def process_images_chunked(
     If '/entry/data/index' exists, it's stored in 'data_index';
     otherwise, 'data_index = frame_number'.
     """
-    # 1) Determine number of frames, plus read '/entry/data/index' if present.
+    # 1) Determine number of frames and read '/entry/data/index' if present else raise error.
+
     with h5py.File(image_file, 'r') as f:
         n_images = f['/entry/data/images'].shape[0]
         index_dset = f.get('/entry/data/index')
         if index_dset is not None:
             data_index_all = index_dset[:]
         else:
-            data_index_all = np.arange(n_images)
+            raise ValueError("Dataset '/entry/data/index' is required for correct processing but was not found in the file.")
 
     # 2) Create a DataFrame with n_images rows, initialized with NaN centers.
     df = pd.DataFrame({
