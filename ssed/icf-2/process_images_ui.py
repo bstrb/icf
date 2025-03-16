@@ -5,9 +5,8 @@ import h5py
 import numpy as np
 import pandas as pd
 import ipywidgets as widgets
-import matplotlib.pyplot as plt
-from multiprocessing import Pool
 from tqdm import tqdm
+from multiprocessing import Pool
 from ipyfilechooser import FileChooser
 from IPython.display import display, clear_output
 
@@ -42,10 +41,9 @@ def compute_center_for_frame(args):
         cx, cy = np.nan, np.nan
 
     return frame_num, cx, cy
-
 # ------------------------------------------------------------------------
-# FUNCTION TO PROCESS IMAGES (ONE ROW PER FRAME)
-def process_images_no_chunk(
+# FUNCTION TO PROCESS IMAGES (ONE ROW PER FRAME) WITH CHUNKING
+def process_images_chunked(
     image_file,
     mask,
     frame_interval=10,
@@ -57,22 +55,20 @@ def process_images_no_chunk(
     xmax=9999999,
     ymin=0,
     ymax=9999999,
-    verbose=False
+    verbose=False,
+    chunk_size=1000  # New parameter for chunking tasks
 ):
     """
-    Creates a CSV with exactly one row per frame_number (0..n_images-1),
-    while only physically loading frames you want to process:
-      - first (0),
-      - last (n_images-1),
-      - multiples of frame_interval.
-      
-    If '/entry/data/index' exists, store it in 'data_index';
+    Creates a CSV with one row per frame with a valid computed center.
+    Only the frames specified (first, last, and every frame_interval) are processed.
+    
+    Introduces chunking in the multiprocessing call to reduce inter-process 
+    communication overhead by grouping tasks.
+    
+    If '/entry/data/index' exists, it's stored in 'data_index';
     otherwise, 'data_index = frame_number'.
-
-    The resulting CSV has columns [frame_number, data_index, center_x, center_y],
-    length == n_images. Unprocessed frames remain NaN for center_x, center_y.
     """
-    # 1) Determine how many frames, plus read /entry/data/index if present
+    # 1) Determine number of frames, plus read '/entry/data/index' if present.
     with h5py.File(image_file, 'r') as f:
         n_images = f['/entry/data/images'].shape[0]
         index_dset = f.get('/entry/data/index')
@@ -81,7 +77,7 @@ def process_images_no_chunk(
         else:
             data_index_all = np.arange(n_images)
 
-    # 2) Create a DataFrame with n_images rows, initialized to NaN centers
+    # 2) Create a DataFrame with n_images rows, initialized with NaN centers.
     df = pd.DataFrame({
         "frame_number": np.arange(n_images),
         "data_index": data_index_all,
@@ -89,18 +85,16 @@ def process_images_no_chunk(
         "center_y": np.full(n_images, np.nan, dtype=float),
     })
 
-    # 3) Identify frames we actually process
-    frames_to_process = set([0, n_images - 1]) | {
-        i for i in range(n_images) if i % frame_interval == 0
-    }
+    # 3) Identify frames to process: first (0), last (n_images-1), and multiples of frame_interval.
+    frames_to_process = set([0, n_images - 1]) | {i for i in range(n_images) if i % frame_interval == 0}
     frames_to_process = sorted(frames_to_process)
 
-    # 4) Build argument tuples for multiprocessing
+    # 4) Build argument tuples for multiprocessing.
     tasks = []
     for fn in frames_to_process:
         tasks.append((
-            fn,         # frame_num
-            image_file, # pass path, not data
+            fn,         # frame number
+            image_file, # image file path
             mask,
             n_wedges, n_rad_bins,
             xatol, fatol,
@@ -108,31 +102,35 @@ def process_images_no_chunk(
             xmin, xmax, ymin, ymax
         ))
 
-    # 5) Parallel center-finding
+    # 5) Parallel center-finding with chunking.
     start_time = time.time()
     with Pool() as pool:
         results = list(
             tqdm(
-                pool.imap(compute_center_for_frame, tasks),
+                pool.imap(compute_center_for_frame, tasks, chunksize=chunk_size),
                 total=len(tasks),
                 desc="Processing frames"
             )
         )
 
-    # 6) Place the results back into df
+    # 6) Place the results back into the DataFrame.
     for (fn, cx, cy) in results:
         df.at[fn, "center_x"] = cx
         df.at[fn, "center_y"] = cy
 
-    # 7) Write CSV
+    # 7) Filter DataFrame to only include frames with found centers (non-NaN values).
+    df_found = df.dropna(subset=["center_x", "center_y"])
+
+    # 8) Write CSV with only found centers.
     csv_file = os.path.join(
         os.path.dirname(image_file),
         f"centers_xatol_{xatol}_frameinterval_{frame_interval}.csv"
     )
-    df.to_csv(csv_file, index=False)
+    df_found.to_csv(csv_file, index=False)
 
     elapsed = time.time() - start_time
-    print(f"Created CSV with {len(df)} rows in {elapsed:.1f}s:\n{csv_file}")
+    print(f"Created CSV with {len(df_found)} found centers in {elapsed:.1f}s:\n{csv_file}")
+
 
 # ------------------------------------------------------------------------
 # UI for Section 1: Process Images
@@ -193,7 +191,7 @@ def on_process_images_clicked(b):
         ymax_val = ymax_widget.value
 
         print("Processing images to create a CSV with one row per frame...")
-        process_images_no_chunk(
+        process_images_chunked(
             image_file=image_file,
             mask=mask,
             frame_interval=frame_interval_val,

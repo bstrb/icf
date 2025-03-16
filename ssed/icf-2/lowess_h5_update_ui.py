@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 import os
-import re
-import time
 import numpy as np
 import pandas as pd
 import ipywidgets as widgets
@@ -9,13 +7,13 @@ import matplotlib.pyplot as plt
 from ipyfilechooser import FileChooser
 from IPython.display import display, clear_output
 
-# Import the LOWESS function.
+# We'll use statsmodels' LOWESS.
 from statsmodels.nonparametric.smoothers_lowess import lowess
 
-# Custom module for updating H5 files.
+# Custom module for updating H5 files (you already have it).
 from update_h5 import create_updated_h5
 
-# We'll use a mutable container (list) for the shifted CSV path.
+# Mutable container for storing the path to the shifted CSV.
 _shifted_csv_path = [None]
 
 # ------------------------------------------------------------------------
@@ -59,75 +57,81 @@ def on_process_csv_clicked(b):
                 print(f"CSV must contain '{col}' column.")
                 return
 
-        # Sort by data_index for the smoothing
+        # Sort by data_index for consistent processing
         df = df.sort_values("data_index").reset_index(drop=True)
-        idx_all  = df["data_index"].values
-        cx_all   = df["center_x"].values
-        cy_all   = df["center_y"].values
 
-        valid_mask = ~np.isnan(cx_all) & ~np.isnan(cy_all)
-        idx_valid  = idx_all[valid_mask]
-        cx_valid   = cx_all[valid_mask]
-        cy_valid   = cy_all[valid_mask]
+        # Extract columns as arrays
+        data_idx = df["data_index"].values
+        cx = df["center_x"].values
+        cy = df["center_y"].values
+
+        # Identify valid points (non-missing centers)
+        valid_mask = ~np.isnan(cx) & ~np.isnan(cy)
+        valid_data_idx = data_idx[valid_mask]
+        valid_cx = cx[valid_mask]
+        valid_cy = cy[valid_mask]
 
         frac_val = lowess_frac_widget.value
+        shift_x = shift_x_widget.value
+        shift_y = shift_y_widget.value
 
-        if len(idx_valid) < 2:
+        # If we don't have enough valid points, don't bother fitting.
+        if len(valid_data_idx) < 2:
             print("Too few valid points for a LOWESS fit. We'll leave all centers as-is.")
+            # Just output the original CSV but note that it won't fill missing endpoints.
             df_smoothed = df.copy()
         else:
-            min_idx, max_idx = idx_valid.min(), idx_valid.max()
-            lowess_x = lowess(cx_valid, idx_valid, frac=frac_val, return_sorted=True)
-            lowess_y = lowess(cy_valid, idx_valid, frac=frac_val, return_sorted=True)
+            # Perform LOWESS on the valid points
+            lowess_x = lowess(valid_cx, valid_data_idx, frac=frac_val, return_sorted=True)
+            lowess_y = lowess(valid_cy, valid_data_idx, frac=frac_val, return_sorted=True)
 
-            # Interpolate at all integer data_index in [min_idx..max_idx]
+            # We want to fill *every* integer data_index from min to max.
+            min_idx, max_idx = data_idx.min(), data_idx.max()
             all_idx = np.arange(min_idx, max_idx + 1)
-            smoothed_x = np.interp(all_idx, lowess_x[:,0], lowess_x[:,1])
-            smoothed_y = np.interp(all_idx, lowess_y[:,0], lowess_y[:,1])
 
-            # Apply user shift
-            shift_x = shift_x_widget.value
-            shift_y = shift_y_widget.value
+            # Interpolate the LOWESS results at each integer data_index
+            smoothed_x = np.interp(all_idx, lowess_x[:, 0], lowess_x[:, 1])
+            smoothed_y = np.interp(all_idx, lowess_y[:, 0], lowess_y[:, 1])
+
+            # Apply user shifts
             smoothed_x += shift_x
             smoothed_y += shift_y
 
-            # Build a lookup
-            idx2sx = dict(zip(all_idx, smoothed_x))
-            idx2sy = dict(zip(all_idx, smoothed_y))
+            # Create a new DataFrame that has *one row per integer data_index*:
+            df_smoothed = pd.DataFrame({
+                "data_index": all_idx,
+                "center_x": smoothed_x,
+                "center_y": smoothed_y
+            })
 
-            # Construct a new DataFrame with updated centers
-            df_smoothed = df.copy()
-            for i in range(len(df_smoothed)):
-                di = df_smoothed.at[i, "data_index"]
-                if min_idx <= di <= max_idx:
-                    df_smoothed.at[i, "center_x"] = idx2sx[di]
-                    df_smoothed.at[i, "center_y"] = idx2sy[di]
-
-        # Plot the original vs. smoothed (for valid points)
+        # ---------------------------
+        # Plot old vs. new data
         fig, axs = plt.subplots(1, 2, figsize=(12, 5))
-        axs[0].plot(idx_valid, cx_valid, 'o--', label='Original X (valid)', markersize=4)
-        axs[1].plot(idx_valid, cy_valid, 'o--', label='Original Y (valid)', markersize=4)
 
-        s_cx_valid = df_smoothed.loc[valid_mask, "center_x"].values
-        s_cy_valid = df_smoothed.loc[valid_mask, "center_y"].values
+        # Original valid data
+        axs[0].plot(valid_data_idx, valid_cx, 'o--', label='Original X (valid)', markersize=4)
+        axs[1].plot(valid_data_idx, valid_cy, 'o--', label='Original Y (valid)', markersize=4)
 
-        axs[0].plot(idx_valid, s_cx_valid, 'o-', label='Smoothed X', markersize=4)
-        axs[1].plot(idx_valid, s_cy_valid, 'o-', label='Smoothed Y', markersize=4)
-        axs[0].set_title("Center X vs data_index")
-        axs[1].set_title("Center Y vs data_index")
+        # Full-range smoothed data
+        axs[0].plot(df_smoothed["data_index"], df_smoothed["center_x"], 'o-', label='Smoothed X (full)', markersize=4)
+        axs[1].plot(df_smoothed["data_index"], df_smoothed["center_y"], 'o-', label='Smoothed Y (full)', markersize=4)
+
+        axs[0].set_title("Center X vs. data_index")
+        axs[1].set_title("Center Y vs. data_index")
         axs[0].legend()
         axs[1].legend()
         plt.show()
+        # ---------------------------
 
-        # Get the basename of the input CSV without the extension.
+        # Save the smoothed CSV
         base_name = os.path.splitext(os.path.basename(input_csv))[0]
-
-        _shifted_csv_path[0] = os.path.join(
+        out_path = os.path.join(
             os.path.dirname(input_csv),
             f"{base_name}_lowess_{frac_val:.2f}_shifted_{shift_x}_{shift_y}.csv"
         )
-        df_smoothed.to_csv(_shifted_csv_path[0], index=False)
-        print(f"Smoothed CSV saved:\n{_shifted_csv_path[0]}")
+        df_smoothed.to_csv(out_path, index=False)
+        _shifted_csv_path[0] = out_path
+        print(f"Smoothed CSV saved:\n{out_path}")
 
 process_csv_button.on_click(on_process_csv_clicked)
 
@@ -159,11 +163,6 @@ def on_update_h5_clicked(b):
         if not image_file:
             print("Please select an H5 file to update.")
             return
-
-        # new_h5_path = os.path.join(
-        #     os.path.dirname(image_file),
-        #     os.path.splitext(os.path.basename(_shifted_csv_path[0]))[0] + '.h5'
-        # )
 
         # Extract the base name (without extension) from _shifted_csv_path[0]
         base_name = os.path.splitext(os.path.basename(_shifted_csv_path[0]))[0]
@@ -202,3 +201,4 @@ def get_ui():
 if __name__ == '__main__':
     ui = get_ui()
     display(ui)
+

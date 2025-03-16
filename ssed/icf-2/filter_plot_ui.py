@@ -103,7 +103,9 @@ def get_ui():
             
             # Save the modified CSV in the same folder as the input.
             output_folder = os.path.dirname(csv_path)
-            output_filename = os.path.join(output_folder, "filtered_centers.csv")
+            base = os.path.basename(csv_path)
+            basename, ext = os.path.splitext(base)
+            output_filename = os.path.join(output_folder, f"{basename}_filtered.csv")
             df_filtered.to_csv(output_filename, index=False)
             print(f"\nFiltered CSV saved to: {output_filename}\n")
             
