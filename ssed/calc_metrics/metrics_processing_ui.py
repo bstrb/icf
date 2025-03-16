@@ -25,7 +25,7 @@ def create_metrics_section():
         <h4>Indexing Metrics Processing</h4>
         <p>
         <b>WRMSD Tolerance:</b> The number of standard deviations away from the mean weighted RMSD for a chunk to be considered an outlier. Default factor is 2.0.<br>
-        <b>Indexing Tolerance:</b> The maximum deviation in pixels between observed and predicted peak positions for a peak to be considered indexed. Default is 1.0 pixel.
+        <b>Indexing Tolerance:</b> The maximum deviation in pixels between observed and predicted peak positions for a peak to be considered indexed. Default is 4.0 pixel.
         </p>
         <p>The following metrics will be evaluated for analysis: 'weighted_rmsd', 'fraction_outliers', 'length_deviation', 'angle_deviation', 'peak_ratio', 'percentage_indexed'.</p>
         """
