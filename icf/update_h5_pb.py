@@ -118,4 +118,4 @@ if __name__ == '__main__':
     new_h5_path = "/home/bubl3932/files/UOX1/UOX1_original/UOX1_sub/UOX1_subset_UPDATED.h5"
     csv_path = "/home/bubl3932/files/UOX1/UOX1_original/UOX1_sub/filtered_centers.csv"
     
-    create_updated_h5(original_h5_path, new_h5_path, csv_path)
+    create_updated_h5_pb(original_h5_path, new_h5_path, csv_path)
