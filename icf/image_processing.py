@@ -13,33 +13,32 @@ from ICFTOTAL import center_of_mass_initial_guess, find_diffraction_center
 def compute_center_for_frame(args):
     """
     Helper function for multiprocessing.
-    Loads one frame from the H5, calls process_single_image, returns (frame_num, center_x, center_y).
-    If the center is invalid or out-of-bounds, it returns NaN.
+    Loads one frame from the H5 file, processes it, and returns (frame_num, center_x, center_y).
+    If the computed center is invalid or out-of-bounds, returns NaN values.
     """
     (frame_num, image_file, mask, n_wedges, n_rad_bins,
      xatol, fatol, verbose, xmin, xmax, ymin, ymax) = args
 
-    # Load the image for this frame
     with h5py.File(image_file, 'r') as f:
         img = f['/entry/data/images'][frame_num].astype(np.float32)
 
-    # Run the center-finding function
-    cx, cy = process_single_image(img, mask, n_wedges, n_rad_bins, xatol, fatol, verbose)
+    cx, cy = process_single_image(img, mask, n_wedges, n_rad_bins, xatol, fatol, verbose, xmin, xmax, ymin, ymax)
 
-    # If out-of-bounds or invalid => NaN
     if not (np.isfinite(cx) and np.isfinite(cy) and
             xmin <= cx < xmax and ymin <= cy < ymax):
         cx, cy = np.nan, np.nan
 
     return frame_num, cx, cy
 
-def process_single_image(img, mask, n_wedges, n_rad_bins, xatol, fatol, verbose):
-    """
-    Process a single image:
-      - Compute the center-of-mass initial guess.
-      - Refine the diffraction center.
-    """
+def process_single_image(img, mask, n_wedges, n_rad_bins, xatol, fatol, verbose, xmin, xmax, ymin, ymax):
+    # Get the initial center-of-mass guess.
     init_center = center_of_mass_initial_guess(img, mask)
+    
+    # Early check: if the initial guess is out-of-bounds, return NaN immediately.
+    if not (xmin <= init_center[0] < xmax and ymin <= init_center[1] < ymax):
+        return np.nan, np.nan
+    
+    # Otherwise, refine the center.
     refined_center = find_diffraction_center(
         img, mask,
         initial_center=init_center,
@@ -51,7 +50,8 @@ def process_single_image(img, mask, n_wedges, n_rad_bins, xatol, fatol, verbose)
     )
     return refined_center
 
-def process_images_chunked(
+
+def process_images_apply_async(
     image_file,
     mask,
     frame_interval=10,
@@ -60,33 +60,26 @@ def process_images_chunked(
     n_wedges=4,
     n_rad_bins=100,
     xmin=0,
-    xmax=9999999,
+    xmax=1024,
     ymin=0,
-    ymax=9999999,
-    verbose=False,
-    chunk_size=1000  # New parameter for chunking tasks
+    ymax=1024,
+    verbose=False
 ):
     """
-    Creates a CSV with one row per frame with a valid computed center.
-    Only the frames specified (first, last, and every frame_interval) are processed.
-    
-    Introduces chunking in the multiprocessing call to reduce inter-process 
-    communication overhead by grouping tasks.
-    
-    If '/entry/data/index' exists, it's stored in 'data_index';
-    otherwise, 'data_index = frame_number'.
+    Processes the specified frames from the H5 image file in parallel using apply_async
+    (without chunking) so that the progress bar is updated for every computed center.
+    Results are stored in a CSV in the same folder as the image file.
     """
-    # 1) Determine number of frames and read '/entry/data/index' if present else raise error.
-
+    # 1) Open the H5 file to get the number of images and index dataset.
     with h5py.File(image_file, 'r') as f:
         n_images = f['/entry/data/images'].shape[0]
         index_dset = f.get('/entry/data/index')
         if index_dset is not None:
             data_index_all = index_dset[:]
         else:
-            raise ValueError("Dataset '/entry/data/index' is required for correct processing but was not found in the file.")
+            raise ValueError("Dataset '/entry/data/index' is required but not found.")
 
-    # 2) Create a DataFrame with n_images rows, initialized with NaN centers.
+    # 2) Create a DataFrame to store centers.
     df = pd.DataFrame({
         "frame_number": np.arange(n_images),
         "data_index": data_index_all,
@@ -94,11 +87,11 @@ def process_images_chunked(
         "center_y": np.full(n_images, np.nan, dtype=float),
     })
 
-    # 3) Identify frames to process: first (0), last (n_images-1), and multiples of frame_interval.
+    # 3) Identify which frames to process.
     frames_to_process = set([0, n_images - 1]) | {i for i in range(n_images) if i % frame_interval == 0}
     frames_to_process = sorted(frames_to_process)
 
-    # 4) Build argument tuples for multiprocessing.
+    # 4) Build a list of tasks.
     tasks = []
     for fn in frames_to_process:
         tasks.append((
@@ -111,31 +104,31 @@ def process_images_chunked(
             xmin, xmax, ymin, ymax
         ))
 
-    # 5) Parallel center-finding with chunking.
-    start_time = time.time()
+    # 5) Create a tqdm progress bar.
+    pbar = tqdm(total=len(tasks), desc="Processing frames", unit="frame")
+
+    # 6) Define a callback to update the progress bar and DataFrame.
+    def update_callback(result):
+        frame_num, cx, cy = result
+        df.at[frame_num, "center_x"] = cx
+        df.at[frame_num, "center_y"] = cy
+        pbar.update(1)
+
+    # 7) Process each task individually using apply_async.
     with Pool() as pool:
-        results = list(
-            tqdm(
-                pool.imap(compute_center_for_frame, tasks, chunksize=chunk_size),
-                total=len(tasks),
-                desc="Processing frames"
-            )
-        )
+        async_results = [pool.apply_async(compute_center_for_frame, args=(task,), callback=update_callback)
+                         for task in tasks]
+        # Wait for all tasks to finish.
+        [res.get() for res in async_results]
 
-    # 6) Place the results back into the DataFrame.
-    for (fn, cx, cy) in results:
-        df.at[fn, "center_x"] = cx
-        df.at[fn, "center_y"] = cy
+    pbar.close()
 
-    # 7) Filter DataFrame to only include frames with found centers (non-NaN values).
-    df_found = df.dropna(subset=["center_x", "center_y"])
+    # 8) Keep only rows for frames that were processed and write out the CSV
+    df = df[df["frame_number"].isin(frames_to_process)]
 
-    # 8) Write CSV with only found centers.
     csv_file = os.path.join(
         os.path.dirname(image_file),
         f"centers_xatol_{xatol}_frameinterval_{frame_interval}.csv"
     )
-    df_found.to_csv(csv_file, index=False)
-
-    elapsed = time.time() - start_time
-    print(f"Created CSV with {len(df_found)} found centers in {elapsed:.1f}s:\n{csv_file}")
+    df.to_csv(csv_file, index=False)
+    print(f"Created CSV with {len(df)} found centers in {time.time()} seconds:\n{csv_file}")

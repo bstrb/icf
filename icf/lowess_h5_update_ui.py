@@ -12,6 +12,7 @@ from statsmodels.nonparametric.smoothers_lowess import lowess
 
 # Custom module for updating H5 files (you already have it).
 from update_h5 import create_updated_h5
+from update_h5_pb import create_updated_h5_pb
 
 # Mutable container for storing the path to the shifted CSV.
 _shifted_csv_path = [None]
@@ -153,6 +154,8 @@ image_file_chooser_h5.filter_pattern = "*.h5"
 update_h5_button = widgets.Button(description="Update H5 with Smoothed Centers", button_style="primary")
 h5_output = widgets.Output(layout={'border': '1px solid black', 'padding': '5px'})
 
+with_pb=widgets.Checkbox(value=False,description='Enable Progress Bar' )
+
 def on_update_h5_clicked(b):
     with h5_output:
         clear_output()
@@ -175,8 +178,12 @@ def on_update_h5_clicked(b):
         new_h5_path = os.path.join(subfolder_path, base_name + '.h5')
 
         try:
-            create_updated_h5(image_file, new_h5_path, _shifted_csv_path[0])
-            print(f"Updated H5 file created at:\n{new_h5_path}")
+            if with_pb.value:
+                create_updated_h5_pb(image_file, new_h5_path, _shifted_csv_path[0])
+                print(f"Updated H5 file created at:\n{new_h5_path}")
+            else:
+                create_updated_h5(image_file, new_h5_path, _shifted_csv_path[0])
+                print(f"Updated H5 file created at:\n{new_h5_path}")
         except Exception as e:
             print("Error updating H5 file:", e)
 
@@ -185,9 +192,11 @@ update_h5_button.on_click(on_update_h5_clicked)
 h5_ui = widgets.VBox([
     widgets.HTML("<h2>Section 2B: Update H5</h2>"),
     image_file_chooser_h5,
+    with_pb,  # Include the progress bar checkbox here.
     update_h5_button,
     h5_output
 ])
+
 
 # Combine the two sections.
 csv_h5_ui = widgets.VBox([lowess_ui, h5_ui])
