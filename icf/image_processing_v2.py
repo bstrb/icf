@@ -22,7 +22,7 @@ def compute_center_for_frame(args):
     with h5py.File(image_file, 'r') as f:
         img = f['/entry/data/images'][frame_num].astype(np.float32)
 
-    cx, cy = process_single_image(img, mask, n_wedges, n_rad_bins, xatol, fatol, verbose)
+    cx, cy = process_single_image(img, mask, n_wedges, n_rad_bins, xatol, fatol, verbose, xmin, xmax, ymin, ymax)
 
     if not (np.isfinite(cx) and np.isfinite(cy) and
             xmin <= cx < xmax and ymin <= cy < ymax):
@@ -30,7 +30,7 @@ def compute_center_for_frame(args):
 
     return frame_num, cx, cy
 
-def process_single_image(img, mask, n_wedges, n_rad_bins, xatol, fatol, verbose):
+def process_single_image(img, mask, n_wedges, n_rad_bins, xatol, fatol, verbose, xmin, xmax, ymin, ymax):
     """
     Process a single image: get an initial center-of-mass guess and then refine it.
     """
