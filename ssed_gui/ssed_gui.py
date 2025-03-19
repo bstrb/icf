@@ -9,7 +9,7 @@ import ssed_refmac_refinement # assuming this file is saved as ssed_refmac_refin
 
 def main():
     root = tk.Tk()
-    root.title("Combined Application")
+    root.title("SSED Workflow Including Gandalf Iterator and Index Metrics Based Filtering")
     notebook = ttk.Notebook(root)
     notebook.pack(fill="both", expand=True)
     

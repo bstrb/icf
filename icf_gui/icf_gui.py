@@ -6,7 +6,7 @@ import smooth_and_shift_gui as smooth_and_shift_gui  # your lowess/H5 update GUI
 
 def main():
     root = tk.Tk()
-    root.title("Combined Image Processing GUI")
+    root.title("Background Intensity Based Center Finding")
     
     notebook = ttk.Notebook(root)
     notebook.pack(fill="both", expand=True)

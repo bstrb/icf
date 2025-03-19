@@ -1,4 +1,4 @@
-# smooth_and_shift_import.py
+# smooth_and_shift_import.py - GUI for smoothing and shifting center data using LOWESS.
 #!/usr/bin/env python3
 import os
 import numpy as np
@@ -79,12 +79,25 @@ def get_ui(parent):
         )
     )).grid(row=0, column=2, padx=5)
     
+    # New: Smoothed CSV file selection.
+    tk.Label(frame_2b, text="Smoothed CSV File:").grid(row=1, column=0, sticky="w")
+    smoothed_csv_path_var = tk.StringVar(frame)
+    smoothed_csv_entry = tk.Entry(frame_2b, textvariable=smoothed_csv_path_var, width=50)
+    smoothed_csv_entry.grid(row=1, column=1, padx=5)
+    tk.Button(frame_2b, text="Browse", command=lambda: smoothed_csv_path_var.set(
+        filedialog.askopenfilename(
+            title="Select Smoothed CSV File",
+            filetypes=[("CSV Files", "*.csv")],
+            initialdir=os.getcwd()
+        )
+    )).grid(row=1, column=2, padx=5)
+    
     # Progress bar checkbox.
     pb_var = tk.BooleanVar(frame, value=False)
-    tk.Checkbutton(frame_2b, text="Enable Progress Bar", variable=pb_var).grid(row=1, column=0, columnspan=2, sticky="w")
+    tk.Checkbutton(frame_2b, text="Enable Progress Bar", variable=pb_var).grid(row=2, column=0, columnspan=2, sticky="w")
     
     # Update H5 button.
-    tk.Button(frame_2b, text="Update H5 with Smoothed Centers", command=lambda: update_h5_file()).grid(row=2, column=0, columnspan=3, pady=5)
+    tk.Button(frame_2b, text="Update H5 with Smoothed Centers", command=lambda: update_h5_file()).grid(row=3, column=0, columnspan=3, pady=5)
     
     # --- Internal function definitions ---
     def preview_lowess():
@@ -172,28 +185,32 @@ def get_ui(parent):
         try:
             global_smoothed_df[0].to_csv(out_path, index=False)
             shifted_csv_path[0] = out_path
+            # Automatically update the Smoothed CSV field in Section 2B.
+            smoothed_csv_path_var.set(out_path)
             print(f"Smoothed CSV saved:\n{out_path}")
         except Exception as e:
             print(f"Error saving CSV: {e}")
     
     def update_h5_file():
         print("-" * 60)
-        if shifted_csv_path[0] is None:
-            print("No shifted CSV available. Please save the smoothed CSV first (Section 2A).")
+        # Use the CSV from the Smoothed CSV field.
+        csv_file = smoothed_csv_path_var.get()
+        if not csv_file:
+            print("No smoothed CSV available. Please save the smoothed CSV first (Section 2A) or select one using the browse button.")
             return
         h5_file = h5_path_var.get()
         if not h5_file:
             print("Please select an H5 file to update.")
             return
-        base_name = os.path.splitext(os.path.basename(shifted_csv_path[0]))[0]
+        base_name = os.path.splitext(os.path.basename(csv_file))[0]
         subfolder_path = os.path.join(os.path.dirname(h5_file), base_name)
         os.makedirs(subfolder_path, exist_ok=True)
         new_h5_path = os.path.join(subfolder_path, base_name + '.h5')
         try:
             if pb_var.get():
-                create_updated_h5_pb(h5_file, new_h5_path, shifted_csv_path[0], use_progress=True)
+                create_updated_h5_pb(h5_file, new_h5_path, csv_file, use_progress=True)
             else:
-                create_updated_h5_pb(h5_file, new_h5_path, shifted_csv_path[0], use_progress=False)
+                create_updated_h5_pb(h5_file, new_h5_path, csv_file, use_progress=False)
             print(f"Updated H5 file created at:\n{new_h5_path}")
         except Exception as e:
             print(f"Error updating H5 file: {e}")

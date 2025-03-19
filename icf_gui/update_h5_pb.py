@@ -11,12 +11,11 @@ from typing import Any
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-def monitor_progress(original_h5_path: str, new_h5_path: str, progress_bar: tqdm, stop_event: threading.Event) -> None:
+def monitor_progress(new_h5_path: str, progress_bar: tqdm, stop_event: threading.Event) -> None:
     """
     Monitor the progress of the HDF5 file copy by checking the new file's size.
     
     Parameters:
-        original_h5_path (str): Path to the original HDF5 file.
         new_h5_path (str): Path to the new HDF5 file.
         progress_bar (tqdm): A tqdm progress bar instance.
         stop_event (threading.Event): An event to signal when to stop monitoring.
@@ -110,7 +109,7 @@ def create_updated_h5_pb(
                     stop_event = threading.Event()
                     monitor_thread = threading.Thread(
                         target=monitor_progress,
-                        args=(original_h5_path, new_h5_path, pbar, stop_event)
+                        args=(new_h5_path, pbar, stop_event)
                     )
                     monitor_thread.start()
                     try:
