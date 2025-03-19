@@ -10,7 +10,8 @@ from tkinter import filedialog
 from statsmodels.nonparametric.smoothers_lowess import lowess
 
 # Custom modules for updating H5 files.
-from update_h5_pb import create_updated_h5_pb
+# from update_h5_pb import create_updated_h5_pb
+from create_updated_h5_pb import create_updated_h5_pb
 
 # Global containers.
 shifted_csv_path = [None]      # To store the path to the saved smoothed CSV.
