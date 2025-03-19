@@ -1,121 +1,170 @@
 #!/usr/bin/env python3
 import h5py
 import pandas as pd
+import os
+import time
+import threading
+import logging
 from tqdm import tqdm
+from typing import Any
 
-def count_datasets(h5group):
-    """
-    Recursively count the number of datasets within an HDF5 group.
-    """
-    count = 0
-    for key in h5group:
-        item = h5group[key]
-        if isinstance(item, h5py.Dataset):
-            count += 1
-        elif isinstance(item, h5py.Group):
-            count += count_datasets(item)
-    return count
+# Configure logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-def copy_h5_recursive(src_group, dst_group, progress_bar):
+def monitor_progress(original_h5_path: str, new_h5_path: str, progress_bar: tqdm, stop_event: threading.Event) -> None:
     """
-    Recursively copy all items from the source group to the destination group.
-    Update the progress bar for each dataset copied.
+    Monitor the progress of the HDF5 file copy by checking the new file's size.
+    
+    Parameters:
+        original_h5_path (str): Path to the original HDF5 file.
+        new_h5_path (str): Path to the new HDF5 file.
+        progress_bar (tqdm): A tqdm progress bar instance.
+        stop_event (threading.Event): An event to signal when to stop monitoring.
     """
-    for key in src_group:
-        item = src_group[key]
-        if isinstance(item, h5py.Group):
-            new_group = dst_group.create_group(key)
-            # Copy attributes of the group, if any
-            for attr in item.attrs:
-                new_group.attrs[attr] = item.attrs[attr]
-            copy_h5_recursive(item, new_group, progress_bar)
-        elif isinstance(item, h5py.Dataset):
-            # Create a new dataset in the destination group using the data from the source
-            dst_dataset = dst_group.create_dataset(key, data=item[...], dtype=item.dtype)
-            # Copy dataset attributes
-            for attr in item.attrs:
-                dst_dataset.attrs[attr] = item.attrs[attr]
-            progress_bar.update(1)
+    try:
+        while not stop_event.is_set():
+            try:
+                new_size = os.path.getsize(new_h5_path)
+            except Exception:
+                new_size = 0
+            progress_bar.n = new_size
+            progress_bar.refresh()
+            time.sleep(1)
+    finally:
+        # Ensure the progress bar is fully updated at the end.
+        progress_bar.n = progress_bar.total
+        progress_bar.refresh()
 
-def create_updated_h5_pb(original_h5_path, new_h5_path, csv_path, framesize=1024,
-                      pixels_per_meter=17857.14285714286):
+def copy_h5_entry(src: h5py.File, dst: h5py.File) -> None:
+    """
+    Copy the entire 'entry' group from the source file to the destination file
+    using h5py.File.copy.
+    
+    Parameters:
+        src (h5py.File): Source HDF5 file.
+        dst (h5py.File): Destination HDF5 file.
+    """
+    dst.copy(src["entry"], "entry")
+
+def create_updated_h5_pb(
+    original_h5_path: str,
+    new_h5_path: str,
+    csv_path: str,
+    use_progress: bool = True,
+    framesize: int = 1024,
+    pixels_per_meter: float = 17857.14285714286
+) -> None:
     """
     Create a new HDF5 file by copying the original file's structure,
-    update the center_x and center_y datasets using CSV data (only for rows
-    whose 'data_index' matches the entries in entry/data/index), and recalculate
-    detector shifts (det_shift_x_mm and det_shift_y_mm).
-
-    Parameters
-    ----------
-    original_h5_path : str
-        Path to the original HDF5 file.
-    new_h5_path : str
-        Path where the updated HDF5 file will be created.
-    csv_path : str
-        Path to the CSV file containing updated centers. The CSV must contain
-        the columns: data_index, center_x, and center_y.
-    framesize : int, optional
-        Size of the frame (assumed square) used for recalculating shifts (default is 1024).
-    pixels_per_meter : float, optional
-        Conversion factor from pixels to meters (default is 17857.14285714286).
+    updating datasets based on CSV data, and recalculating detector shifts.
+    
+    Parameters:
+        original_h5_path (str): Path to the original HDF5 file.
+        new_h5_path (str): Path where the updated HDF5 file will be created.
+        csv_path (str): Path to the CSV file with updated center coordinates.
+        use_progress (bool): Whether to display a progress bar during the copy.
+        framesize (int): Frame size used for recalculating shifts.
+        pixels_per_meter (float): Conversion factor from pixels to meters.
     """
-    # 1. Read CSV data and ensure required columns exist
-    df = pd.read_csv(csv_path)
+    # Overwrite protection: do not overwrite an existing file.
+    if os.path.exists(new_h5_path):
+        logging.error(f"File {new_h5_path} already exists. Exiting to avoid overwrite.")
+        raise FileExistsError(f"File {new_h5_path} already exists.")
+
+    # 1. Read CSV data and validate required columns.
+    try:
+        df: pd.DataFrame = pd.read_csv(csv_path)
+    except Exception as e:
+        logging.exception("Failed to read CSV file.")
+        raise e
     required_cols = ['data_index', 'center_x', 'center_y']
     if not all(col in df.columns for col in required_cols):
         raise ValueError(f"CSV file must contain columns: {required_cols}")
 
-    # 2. Open the original HDF5 file and read the 'entry/data/index' dataset
-    with h5py.File(original_h5_path, 'r') as src:
-        h5_index = src['entry/data/index'][()]
+    # 2. Retrieve the HDF5 index from the original file.
+    try:
+        with h5py.File(original_h5_path, 'r') as src:
+            h5_index = src['entry/data/index'][()]
+    except Exception as e:
+        logging.exception("Failed to open original HDF5 file or access 'entry/data/index'.")
+        raise e
 
-    # 3. Filter CSV to keep only rows with matching data_index, and reindex
-    df_filtered = df[df['data_index'].isin(h5_index)].copy()
+    # 3. Filter CSV data based on the HDF5 index.
+    df_filtered: pd.DataFrame = df[df['data_index'].isin(h5_index)].copy()
     df_filtered.set_index('data_index', inplace=True)
     df_filtered = df_filtered.reindex(h5_index)
     if df_filtered.isnull().values.any():
         raise ValueError("Not all indices in the HDF5 file were found in the CSV file.")
 
-    # Extract centers in the order of the HDF5 index
     center_x = df_filtered['center_x'].values
     center_y = df_filtered['center_y'].values
 
-    # 4. Copy the original HDF5 file structure into a new file with a progress bar
-    with h5py.File(original_h5_path, 'r') as src, h5py.File(new_h5_path, 'w') as dst:
-        src_entry = src['entry']
-        dst_entry = dst.create_group('entry')
-        total_datasets = count_datasets(src_entry)
-        with tqdm(total=total_datasets, desc="Copying HDF5 datasets", unit="dataset") as pbar:
-            copy_h5_recursive(src_entry, dst_entry, pbar)
+    # 4. Copy the original HDF5 file structure to a new file.
+    try:
+        if use_progress:
+            original_size = os.path.getsize(original_h5_path)
+            with h5py.File(original_h5_path, 'r') as src, h5py.File(new_h5_path, 'w') as dst:
+                with tqdm(total=original_size, unit='B', unit_scale=True, unit_divisor=1024,
+                          desc="Copying HDF5 file",
+                          bar_format="{l_bar}{bar} {n_fmt}/{total_fmt} [{elapsed}<{remaining}]") as pbar:
+                    stop_event = threading.Event()
+                    monitor_thread = threading.Thread(
+                        target=monitor_progress,
+                        args=(original_h5_path, new_h5_path, pbar, stop_event)
+                    )
+                    monitor_thread.start()
+                    try:
+                        copy_h5_entry(src, dst)
+                    except Exception as e:
+                        logging.exception("Error during HDF5 file copy.")
+                        raise e
+                    finally:
+                        # Ensure thread cleanup.
+                        stop_event.set()
+                        monitor_thread.join()
+        else:
+            with h5py.File(original_h5_path, 'r') as src, h5py.File(new_h5_path, 'w') as dst:
+                copy_h5_entry(src, dst)
+    except Exception as e:
+        logging.exception("Failed to copy HDF5 file structure.")
+        raise e
 
-    # 5. Reopen the new file in read-write mode to update datasets
-    with h5py.File(new_h5_path, 'r+') as dst:
-        # Remove and recreate center_x and center_y datasets
-        for dset in ['entry/data/center_x', 'entry/data/center_y']:
-            if dset in dst:
-                del dst[dset]
-        dst.create_dataset('entry/data/center_x', data=center_x, dtype='float64')
-        dst.create_dataset('entry/data/center_y', data=center_y, dtype='float64')
+    # 5. Update center coordinates and detector shifts in the new file.
+    try:
+        with h5py.File(new_h5_path, 'r+') as dst:
+            # Remove and update center datasets.
+            for dset in ['entry/data/center_x', 'entry/data/center_y']:
+                if dset in dst:
+                    del dst[dset]
+            dst.create_dataset('entry/data/center_x', data=center_x, dtype='float64')
+            dst.create_dataset('entry/data/center_y', data=center_y, dtype='float64')
 
-        # Compute the new detector shifts
-        presumed_center = framesize / 2.0
-        det_shift_x_mm = -((center_x - presumed_center) / pixels_per_meter) * 1000
-        det_shift_y_mm = -((center_y - presumed_center) / pixels_per_meter) * 1000
+            # Recalculate detector shifts.
+            presumed_center = framesize / 2.0
+            det_shift_x_mm = -((center_x - presumed_center) / pixels_per_meter) * 1000
+            det_shift_y_mm = -((center_y - presumed_center) / pixels_per_meter) * 1000
 
-        # Remove and recreate detector shift datasets
-        for dset in ['entry/data/det_shift_x_mm', 'entry/data/det_shift_y_mm']:
-            if dset in dst:
-                del dst[dset]
-        dst.create_dataset('entry/data/det_shift_x_mm', data=det_shift_x_mm, dtype='float64')
-        dst.create_dataset('entry/data/det_shift_y_mm', data=det_shift_y_mm, dtype='float64')
+            for dset in ['entry/data/det_shift_x_mm', 'entry/data/det_shift_y_mm']:
+                if dset in dst:
+                    del dst[dset]
+            dst.create_dataset('entry/data/det_shift_x_mm', data=det_shift_x_mm, dtype='float64')
+            dst.create_dataset('entry/data/det_shift_y_mm', data=det_shift_y_mm, dtype='float64')
+    except Exception as e:
+        logging.exception("Failed to update center coordinates or detector shifts.")
+        raise e
 
-    print(f"New HDF5 file created: {new_h5_path}")
-    print("Center coordinates and detector shifts have been updated.")
+    logging.info(f"New HDF5 file created: {new_h5_path}")
+    logging.info("Center coordinates and detector shifts have been updated.")
 
 if __name__ == '__main__':
-    # Modify these paths as needed
-    original_h5_path = "/home/bubl3932/files/UOX1/UOX1_original/UOX1_sub/UOX1_subset.h5"
-    new_h5_path = "/home/bubl3932/files/UOX1/UOX1_original/UOX1_sub/UOX1_subset_UPDATED.h5"
-    csv_path = "/home/bubl3932/files/UOX1/UOX1_original/UOX1_sub/filtered_centers.csv"
+    # Define file paths (modify as needed).
+    original_h5_path: str = "/Users/xiaodong/Desktop/UOX-data/UOX1/deiced_UOX1_min_15_peak.h5"
+    new_h5_path: str = "/Users/xiaodong/Desktop/UOX-data/UOX1/deiced_UOX1_min_15_peak_UPDATED.h5"
+    csv_path: str = "/Users/xiaodong/Desktop/UOX-data/UOX1/centers_xatol_0.01_frameinterval_10_lowess_0.10_shifted_0.5_-0.3.csv"
     
-    create_updated_h5_pb(original_h5_path, new_h5_path, csv_path)
+    
+    try:
+        # Toggle progress bar usage by setting use_progress to True or False.
+        create_updated_h5_pb(original_h5_path, new_h5_path, csv_path, use_progress=True)
+    except Exception as e:
+        logging.error("An error occurred during processing.")
