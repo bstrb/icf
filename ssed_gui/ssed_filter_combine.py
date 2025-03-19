@@ -1,4 +1,3 @@
-# ssed_filter_combine.py
 #!/usr/bin/env python3
 import os
 import tkinter as tk
@@ -6,6 +5,7 @@ from tkinter import filedialog, messagebox
 import matplotlib.pyplot as plt
 
 # Import your custom modules.
+from gui_util.create_scrollable_frame import create_scrollable_frame
 from filter_and_combine.csv_to_stream import write_stream_from_filtered_csv
 from filter_and_combine.interactive_iqm import (
     read_metric_csv,
@@ -34,14 +34,6 @@ metrics_in_order = [
 def get_ui(parent):
     """
     Creates and returns a Tkinter Frame containing the interactive metrics analysis UI.
-    
-    The UI consists of:
-      1. A CSV file selection section.
-      2. A "Separate Metrics Filtering" section with sliders for each metric.
-      3. A "Combined Metric Creation & Filtering" section with weight entries,
-         a threshold slider, and buttons to create combined metric, filter, and convert.
-    
-    All feedback is printed to the terminal.
     """
     main_frame = tk.Frame(parent)
     
@@ -125,6 +117,8 @@ def get_ui(parent):
         filter_separate_button.grid(row=row, column=0, columnspan=2, pady=5)
         
         def on_filter_separate_clicked():
+            # Close any previous plots.
+            plt.close('all')
             print("\n" + "="*50)
             print("SEPARATE METRICS FILTERING")
             thresholds = {m: metric_sliders[m].get() for m in metrics_in_order}
@@ -205,6 +199,8 @@ def get_ui(parent):
         filter_combined_button.grid(row=row+1, column=0, columnspan=2, pady=5)
         
         def on_filter_combined_clicked():
+            # Close any previous plots.
+            plt.close('all')
             print("\n" + "="*50)
             print("COMBINED METRIC FILTERING")
             threshold = combined_threshold_var.get()
@@ -265,16 +261,17 @@ def get_ui(parent):
         
         convert_button.config(command=on_convert_clicked)
     
-    # Assemble final layout for CSV loading UI.
-    top_layout = tk.Frame(main_frame)
-    top_layout.pack(fill="x", padx=10, pady=5)
-    # The CSV section (csv_frame) is already at the top; ui_container holds the rest.
-    
     return main_frame
 
 if __name__ == '__main__':
     root = tk.Tk()
     root.title("Interactive Metrics Analysis Tool")
-    ui = get_ui(root)
+    # Set a minimum size for the window
+    root.minsize(800, 600)
+    
+    # Create a scrollable frame in the root.
+    scroll_frame = create_scrollable_frame(root)
+    ui = get_ui(scroll_frame)
     ui.pack(fill="both", expand=True)
+    
     root.mainloop()
