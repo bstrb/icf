@@ -1,8 +1,8 @@
 import tkinter as tk
 from tkinter import ttk
-import icf_gui.center_finding_gui as center_finding_gui
-import icf_gui.filter_centers_gui as filter_centers_gui      # your filtering GUI module (refactored similarly)
-import icf_gui.smooth_and_shift_gui as smooth_and_shift_gui  # your lowess/H5 update GUI module (refactored similarly)
+import center_finding_gui as center_finding_gui
+import filter_centers_gui as filter_centers_gui      # your filtering GUI module (refactored similarly)
+import smooth_and_shift_gui as smooth_and_shift_gui  # your lowess/H5 update GUI module (refactored similarly)
 
 def main():
     root = tk.Tk()
