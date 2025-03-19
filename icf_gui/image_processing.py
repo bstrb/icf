@@ -1,7 +1,6 @@
 # image_processing.py
 
 import os
-import time
 import h5py
 import numpy as np
 import pandas as pd
@@ -131,4 +130,4 @@ def process_images_apply_async(
         f"centers_xatol_{xatol}_frameinterval_{frame_interval}.csv"
     )
     df.to_csv(csv_file, index=False)
-    print(f"Created CSV with {len(df)} found centers in {time.time()} seconds:\n{csv_file}")
+    print(f"Created CSV with {len(df)} found centers in:\n{csv_file}")
