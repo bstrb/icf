@@ -1,4 +1,5 @@
 import re
+import os
 import numpy as np
 import csv
 import matplotlib.pyplot as plt
@@ -311,7 +312,7 @@ def parse_stream_and_refine_multiproc(stream_file):
     plt.title('Refined Beam Center Y vs. Event Index')
     plt.show()
 
-    csv_filename = "refined_centers.csv"
+    csv_filename = os.path.join(os.path.dirname(stream_file),"refined_centers.csv")
     with open(csv_filename, "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
         # Write header row
