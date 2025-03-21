@@ -5,8 +5,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 
 # Import visualization functions.
-from visualization.indexing_3d_histogram import plot3d_indexing_rate
-from visualization.indexing_center import indexing_heatmap
+from visualization.indexing_3d_histogram import plot3d_indexing_rate, indexing_heatmap
 
 def get_ui(parent):
     """
@@ -50,7 +49,7 @@ def get_ui(parent):
         try:
             # Call the visualization functions.
             plot3d_indexing_rate(output_folder)
-            indexing_heatmap(output_folder)
+            # indexing_heatmap(output_folder)
             print("Visualization completed successfully.")
         except Exception as e:
             print("Error during visualization:", e)
