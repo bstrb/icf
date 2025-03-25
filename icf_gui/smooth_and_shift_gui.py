@@ -12,6 +12,7 @@ from statsmodels.nonparametric.smoothers_lowess import lowess
 # Custom modules for updating H5 files.
 # from update_h5_pb import create_updated_h5_pb
 from create_updated_h5_pb import create_updated_h5_pb
+from extract_geom_values import extract_geom_values
 
 # Global containers.
 shifted_csv_path = [None]      # To store the path to the saved smoothed CSV.
@@ -79,26 +80,39 @@ def get_ui(parent):
             initialdir=os.getcwd()
         )
     )).grid(row=0, column=2, padx=5)
+
+    # GEOM file selection.
+    tk.Label(frame_2b, text="Geometry File needed for H5 Update:").grid(row=1, column=0, sticky="w")
+    geom_path_var = tk.StringVar(frame)
+    geom_entry = tk.Entry(frame_2b, textvariable=geom_path_var, width=50)
+    geom_entry.grid(row=1, column=1, padx=5)
+    tk.Button(frame_2b, text="Browse", command=lambda: geom_path_var.set(
+        filedialog.askopenfilename(
+            title="Select geom File to Update",
+            filetypes=[("geom Files", "*.geom")],
+            initialdir=os.getcwd()
+        )
+    )).grid(row=1, column=2, padx=5)
     
     # New: Smoothed CSV file selection.
-    tk.Label(frame_2b, text="Smoothed CSV File:").grid(row=1, column=0, sticky="w")
+    tk.Label(frame_2b, text="Smoothed CSV File:").grid(row=2, column=0, sticky="w")
     smoothed_csv_path_var = tk.StringVar(frame)
     smoothed_csv_entry = tk.Entry(frame_2b, textvariable=smoothed_csv_path_var, width=50)
-    smoothed_csv_entry.grid(row=1, column=1, padx=5)
+    smoothed_csv_entry.grid(row=2, column=1, padx=5)
     tk.Button(frame_2b, text="Browse", command=lambda: smoothed_csv_path_var.set(
         filedialog.askopenfilename(
             title="Select Smoothed CSV File",
             filetypes=[("CSV Files", "*.csv")],
             initialdir=os.getcwd()
         )
-    )).grid(row=1, column=2, padx=5)
+    )).grid(row=2, column=2, padx=5)
     
     # Progress bar checkbox.
     pb_var = tk.BooleanVar(frame, value=False)
-    tk.Checkbutton(frame_2b, text="Enable Progress Bar", variable=pb_var).grid(row=2, column=0, columnspan=2, sticky="w")
+    tk.Checkbutton(frame_2b, text="Enable Progress Bar", variable=pb_var).grid(row=3, column=0, columnspan=2, sticky="w")
     
     # Update H5 button.
-    tk.Button(frame_2b, text="Update H5 with Smoothed Centers", command=lambda: update_h5_file()).grid(row=3, column=0, columnspan=3, pady=5)
+    tk.Button(frame_2b, text="Update H5 with Smoothed Centers", command=lambda: update_h5_file()).grid(row=4, column=0, columnspan=3, pady=5)
     
     # --- Internal function definitions ---
     def preview_lowess():
@@ -203,15 +217,26 @@ def get_ui(parent):
         if not h5_file:
             print("Please select an H5 file to update.")
             return
+        geom_file = geom_path_var.get()
+        if not geom_file:
+            print("Please select a GEOM file needed for H5 update.")
+            return
+        try:
+            res_val, max_ss_val = extract_geom_values(geom_file)
+            print(f"Extracted values from GEOM: res={res_val}, max_ss={max_ss_val}")
+        except Exception as e:
+            print(f"Error extracting values from GEOM: {e}")
+            return
+
         base_name = os.path.splitext(os.path.basename(csv_file))[0]
         subfolder_path = os.path.join(os.path.dirname(h5_file), base_name)
         os.makedirs(subfolder_path, exist_ok=True)
         new_h5_path = os.path.join(subfolder_path, base_name + '.h5')
         try:
             if pb_var.get():
-                create_updated_h5_pb(h5_file, new_h5_path, csv_file, use_progress=True)
+                create_updated_h5_pb(h5_file, new_h5_path, csv_file, use_progress=True, framesize=(max_ss_val+1)/2, pixels_per_meter=res_val)
             else:
-                create_updated_h5_pb(h5_file, new_h5_path, csv_file, use_progress=False)
+                create_updated_h5_pb(h5_file, new_h5_path, csv_file, use_progress=False, fr1amesize=(max_ss_val+1)/2, pixels_per_meter=res_val)
             print(f"Updated H5 file created at:\n{new_h5_path}")
         except Exception as e:
             print(f"Error updating H5 file: {e}")
