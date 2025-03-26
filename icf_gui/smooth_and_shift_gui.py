@@ -234,9 +234,9 @@ def get_ui(parent):
         new_h5_path = os.path.join(subfolder_path, base_name + '.h5')
         try:
             if pb_var.get():
-                create_updated_h5_pb(h5_file, new_h5_path, csv_file, use_progress=True, framesize=(max_ss_val+1)/2, pixels_per_meter=res_val)
+                create_updated_h5_pb(h5_file, new_h5_path, csv_file, use_progress=True, framesize=max_ss_val+1, pixels_per_meter=res_val)
             else:
-                create_updated_h5_pb(h5_file, new_h5_path, csv_file, use_progress=False, fr1amesize=(max_ss_val+1)/2, pixels_per_meter=res_val)
+                create_updated_h5_pb(h5_file, new_h5_path, csv_file, use_progress=False, fr1amesize=max_ss_val+1, pixels_per_meter=res_val)
             print(f"Updated H5 file created at:\n{new_h5_path}")
         except Exception as e:
             print(f"Error updating H5 file: {e}")
