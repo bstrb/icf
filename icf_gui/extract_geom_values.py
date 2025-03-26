@@ -17,12 +17,12 @@ def extract_geom_values(file_path):
                 parts = line.split("=")
                 if len(parts) > 1:
                     # Remove any additional units or spaces if needed
-                    res_val = parts[1].strip().split()[0]
+                    res_val = float(parts[1].strip().split()[0])
             # Check for the 'p0/max_ss' line
             elif line.startswith("p0/max_ss"):
                 parts = line.split("=")
                 if len(parts) > 1:
-                    max_ss_val = parts[1].strip().split()[0]
+                    max_ss_val = int(parts[1].strip().split()[0])
     return res_val, max_ss_val
 
 if __name__ == "__main__":
