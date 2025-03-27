@@ -21,7 +21,16 @@ def get_ui(parent):
       3. MTZ Conversion Section: Select a cell file and convert merged output to MTZ.
     """
     frame = tk.Frame(parent)
-    
+    explanation = (
+    "Merging:\n"
+    " - Select a .stream file and set merging parameters (pointgroup, threads, iterations) to merge data from multiple indexing iterations.\n\n"
+    "SHELX Conversion:\n"
+    " - Convert the merged output to the SHELX format.\n\n"
+    "MTZ Conversion:\n"
+    " - Select a cell file and convert the merged output to MTZ format for further analysis."
+    )
+    explanation_label = tk.Label(frame, text=explanation, justify=tk.LEFT, wraplength=600)
+    explanation_label.pack(padx=10, pady=10)
     # Container to store the merged output directory.
     global_output_dir = [None]
 

@@ -79,7 +79,15 @@ def get_ui(parent):
     All feedback is printed to the terminal.
     """
     frame = tk.Frame(parent)
-    
+    explanation = (
+    "Refmac5 Refinement and Analysis\n\n"
+    "Select an MTZ and a PDB file, and set optional parameters (max_res, min_res, ncycles, bins) for refinement. "
+    "Click 'Refine with Refmac5 (and Plot)' to run the refinement. After completion, the tool parses the refmac5.log "
+    "to extract resolution and Rf_used values, and then plots R vs. Resolution."
+    )
+    explanation_label = tk.Label(frame, text=explanation, justify=tk.LEFT, wraplength=600)
+    explanation_label.pack(padx=10, pady=10)
+
     # --- File Selection Frame ---
     file_frame = tk.LabelFrame(frame, text="Refmac5 Input Files", padx=10, pady=10)
     file_frame.pack(fill="x", padx=10, pady=5)

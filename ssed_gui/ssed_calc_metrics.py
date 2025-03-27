@@ -18,14 +18,21 @@ def get_ui(parent):
     
     # Explanation text.
     explanation = (
-        "Indexing Metrics Processing\n\n"
-        "WRMSD Tolerance: The number of standard deviations away from the mean weighted RMSD "
-        "for a chunk to be considered an outlier. (Default: 2.0)\n"
-        "Indexing Tolerance: The maximum deviation in pixels between observed and predicted "
-        "peak positions for a peak to be considered indexed. (Default: 4.0)\n\n"
-        "Metrics evaluated for analysis: 'weighted_rmsd', 'fraction_outliers', 'length_deviation', "
-        "'angle_deviation', 'peak_ratio', 'percentage_indexed'."
-    )
+    "Processes stream files from multiple indexing iterations to evaluate key metrics on frame quality.\n\n"
+    "Evaluated Metrics:\n"
+    " - Weighted RMSD: Intensity-weighted overall deviation.\n"
+    " - Fraction Outliers: Proportion of segments flagged as outliers in RMSD calculation.\n"
+    " - Length Deviation: Variability in measured cell lengths.\n"
+    " - Angle Deviation: Variability in measured cell angles.\n"
+    " - Peak Ratio: Ratio of predicted to observed peaks.\n"
+    " - Percentage Indexed: Percentage of peaks successfully indexed.\n\n"
+    "Parameters:\n"
+    " - WRMSD Tolerance (Default: 2.0): Threshold (in standard deviations) for flagging outliers. "
+    "If the difference between an observed and a predicted peak exceeds this threshold, the peak is rejected.\n"
+    " - Indexing Tolerance (Default: 4.0): Maximum allowable deviation (in pixels) between observed and predicted "
+    "peak positions for a peak to be considered indexed."
+)
+
     explanation_label = tk.Label(frame, text=explanation, justify=tk.LEFT, wraplength=600)
     explanation_label.pack(padx=10, pady=10)
     

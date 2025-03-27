@@ -18,81 +18,82 @@ def plot_indexing_rate(folder_path):
         x = float(parts[-2])
         y = float(parts[-1])
         
-        # Count occurrences of "num_reflections"
+        # Count occurrences of "num_reflections" and "num_peaks"
         event_count = 0
+        total_count = 0
         with open(stream_file, "r") as f:
             for line in f:
                 if line.startswith("num_reflections"):
                     event_count += 1
-        
-        data.append((x, y, event_count))
+                if line.startswith("num_peaks"):
+                    total_count += 1
+        percentage = event_count / total_count * 100 if total_count else 0
+        data.append((x, y, percentage))
     
     df = pd.DataFrame(data, columns=["x", "y", "count"])
     
-    # Create figure and 3D axis with a larger size
+    # Create figure and 3D axis
     fig = plt.figure(figsize=(10, 8))
     ax = fig.add_subplot(111, projection='3d')
     
-    # Normalize count values for the colormap
+    # Normalize percentage values for the colormap
     norm = mcolors.Normalize(vmin=df["count"].min(), vmax=df["count"].max())
     cmap = plt.cm.viridis
     
-    # Define bar widths (adjust based on your data scale)
+    # Define bar widths
     dx = dy = 0.07
     z_base = 0  # bars start at z = 0
     
-    # Plot each bar individually with a color corresponding to its height
+    # Plot each bar individually with a color corresponding to its percentage
     for _, row in df.iterrows():
         x_val = row["x"]
         y_val = row["y"]
         dz = row["count"]
         color = cmap(norm(dz))
         ax.bar3d(x_val, y_val, z_base, dx, dy, dz,
-                 color=color, shade=True, alpha=0.95)#, edgecolor='k')
+                 color=color, shade=True, alpha=0.95)
     
     # Add a colorbar for reference
     mappable = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
     mappable.set_array(df["count"])
     cbar = fig.colorbar(mappable, ax=ax, pad=0.1)
-    cbar.set_label("Count of index results")
+    cbar.set_label("Indexing Rate (%)")
     
     # Set labels and title
     ax.set_xlabel("X coordinate")
     ax.set_ylabel("Y coordinate")
-    ax.set_zlabel("Count of index results")
-    ax.set_title("3D Bar Plot of indexing rate at Each (x, y) Coordinate")
+    ax.set_zlabel("Indexing Rate (%)")
+    ax.set_title("3D Bar Plot of Indexing Rate at Each (x, y) Coordinate")
     
-    # Adjust the viewing angle for a better perspective
+    # Adjust the viewing angle
     ax.view_init(elev=25, azim=135)
     
-    # Optionally, remove background fill from panes for a cleaner look
+    # Optionally, adjust background pane fills
     ax.xaxis.pane.fill = True
     ax.yaxis.pane.fill = True
     ax.zaxis.pane.fill = True
     
     plt.show()
 
-    # Create a scatter plot where each point's color = 'count'
+    # Create a scatter plot with color representing indexing rate (%)
     plt.figure()
     scatter = plt.scatter(
         df["x"], 
         df["y"], 
-        c=df["count"],        # color by num_reflections count
-        cmap="viridis",       # choose any built-in colormap you like
-        alpha=0.9,            # make points slightly transparent if desired
-        # edgecolors="black",   # optional: add borders around points
-        s=150                  # marker size
+        c=df["count"],
+        cmap="viridis",
+        alpha=0.9,
+        s=150
     )
 
-    # Add a colorbar to show the scale of 'num_reflections'
     cbar = plt.colorbar(scatter)
-    cbar.set_label("Count of index results")
+    cbar.set_label("Indexing Rate (%)")
 
-    plt.title("Number of index results at Each (x, y) File Coordinate")
+    plt.title("Indexing Rate (%) at Each (x, y) File Coordinate")
     plt.xlabel("X coordinate")
     plt.ylabel("Y coordinate")
-    plt.grid(True)  # Optional grid
-
+    plt.grid(True)
+    
     plt.show()
 
 if __name__ == "__main__":
