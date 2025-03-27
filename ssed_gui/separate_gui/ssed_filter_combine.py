@@ -39,12 +39,12 @@ def get_ui(parent):
     explanation = (
     "Load a CSV file containing normalized metrics for indexing quality from previous step. Once loaded, you have two analysis options:\n\n"
     "1. Separate Metrics Filtering:\n"
-    "   • Adjust individual thresholds for each separate metric using sliders.\n"
-    "   • The tool filters data based on these thresholds and displays histograms for each metric.\n\n"
+    "   - Adjust individual thresholds for each separate metric using sliders.\n"
+    "   - The tool filters data based on these thresholds and displays histograms for each metric.\n\n"
     "2. Combined Metric Creation & Filtering:\n"
-    "   • Assign weights to each separate metric to create an overall combined metric.\n"
-    "   • Adjust the combined metric threshold to filter and select the best rows per event.\n"
-    "   • Optionally, convert the filtered results into a stream file for further processing.\n\n"
+    "   - Assign weights to each separate metric to create an overall combined metric.\n"
+    "   - Adjust the combined metric threshold to filter and select the best rows per event.\n"
+    "   - Optionally, convert the filtered results into a stream file for further processing.\n\n"
     )
     explanation_label = tk.Label(main_frame, text=explanation, justify=tk.LEFT, wraplength=600)
     explanation_label.pack(padx=10, pady=10)

@@ -11,8 +11,8 @@ def get_ui(parent):
     "Select a folder with indexing output stream files from Gandalf iterations with shifted centers. "
     "Clicking 'Generate Visualizations' will extract the x and y shift values from the filenames, calculate "
     "the indexing rate as the percentage of indexed frames (num_reflections / num_peaks * 100), and generate:\n\n"
-    "• A 3D bar plot (bar height = indexing rate in %)\n"
-    "• A 2D scatter (heatmap-style) plot (color intensity = indexing rate in %)"
+    " - A 3D bar plot (bar height = indexing rate in %)\n"
+    " - A 2D scatter (heatmap-style) plot (color intensity = indexing rate in %)"
     )
 
     
