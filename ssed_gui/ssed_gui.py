@@ -3,12 +3,12 @@ from tkinter import ttk
 
 from gui_util.create_scrollable_frame import create_scrollable_frame
 
-import ssed_gandalf_iterator  # assuming this file is saved as ssed_gandalf_iterator.py
-import ssed_visualization  # assuming this file is saved as ssed_visualization.py
-import ssed_calc_metrics  # assuming this file is saved as ssed_calc_metrics.py
-import ssed_filter_combine  # assuming this file is saved as ssed_filter_combine.py
-import ssed_merge_convert  # assuming this file is saved as ssed_merge_convert.py
-import ssed_refmac_refinement # assuming this file is saved as ssed_refmac_refinement.py
+import separate_gui.ssed_gandalf_iterator as ssed_gandalf_iterator  # assuming this file is saved as ssed_gandalf_iterator.py
+import separate_gui.ssed_visualization  as ssed_visualization # assuming this file is saved as ssed_visualization.py
+import separate_gui.ssed_calc_metrics  as ssed_calc_metrics # assuming this file is saved as ssed_calc_metrics.py
+import separate_gui.ssed_filter_combine  as ssed_filter_combine # assuming this file is saved as ssed_filter_combine.py
+import separate_gui.ssed_merge_convert  as ssed_merge_convert # assuming this file is saved as ssed_merge_convert.py
+import separate_gui.ssed_refmac_refinement as ssed_refmac_refinement # assuming this file is saved as ssed_refmac_refinement.py
 
 def main():
     root = tk.Tk()

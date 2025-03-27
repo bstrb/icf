@@ -37,7 +37,16 @@ def get_ui(parent):
     Creates and returns a Frame containing the complete Gandalf Indexing GUI.
     """
     frame = tk.Frame(parent)
-    
+    description = (
+    "Run the indexamajig command with optional outward center shifts in a grid.\n"
+    "Select .geom and .cell files and choose the input folder with .h5 files to be processed.\n"
+    "Set basic parameters such as Output Base (name of your sample), Threads (number of used CPU), Max Radius (maximum shift distance), and Step (grid spacing).\n"
+    "Configure Peakfinder options, advanced indexing parameters and optionally extra flags.\n"
+    "Click 'Run Indexing' to execute indexing iterations with shifted centers until the specified radius."
+    )
+    description_label = tk.Label(frame, text=description, justify=tk.LEFT, wraplength=600)
+    description_label.pack(padx=10, pady=10)
+
     # ----- File Selection Section -----
     file_frame = tk.LabelFrame(frame, text="File Selection", padx=10, pady=10)
     file_frame.pack(fill="x", padx=10, pady=5)
@@ -93,11 +102,11 @@ def get_ui(parent):
     tk.Entry(basic_frame, textvariable=threads_var, width=10).grid(row=1, column=1, sticky="w", padx=5)
     
     tk.Label(basic_frame, text="Max Radius:").grid(row=2, column=0, sticky="w")
-    max_radius_var = tk.StringVar(value="1.8")
+    max_radius_var = tk.StringVar(value="0.1")
     tk.Entry(basic_frame, textvariable=max_radius_var, width=10).grid(row=2, column=1, sticky="w", padx=5)
     
     tk.Label(basic_frame, text="Step:").grid(row=3, column=0, sticky="w")
-    step_var = tk.StringVar(value="0.5")
+    step_var = tk.StringVar(value="0.1")
     tk.Entry(basic_frame, textvariable=step_var, width=10).grid(row=3, column=1, sticky="w", padx=5)
     
     # ----- Peakfinder Section -----
