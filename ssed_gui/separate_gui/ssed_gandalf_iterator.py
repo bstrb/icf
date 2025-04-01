@@ -7,6 +7,32 @@ from tkinter import filedialog, messagebox
 # Import the indexing function.
 from gandalf_interations.gandalf_radial_iterator import gandalf_iterator
 
+# ==============================================================================
+# Import the necessary libraries for file handling and cleanup.
+import glob
+import shutil
+import atexit
+import signal
+
+def cleanup_temp_dirs():
+    """Remove all directories in the current working directory that start with 'indexamajig'."""
+    for d in glob.glob("indexamajig*"):
+        if os.path.isdir(d):
+            shutil.rmtree(d)
+            print(f"Removed temporary directory: {d}")
+
+# Register cleanup function to run at program exit.
+atexit.register(cleanup_temp_dirs)
+
+# Optionally, catch termination signals to ensure cleanup on interruptions.
+def signal_handler(sig, frame):
+    cleanup_temp_dirs()
+    exit(0)
+
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
+# ==============================================================================
+
 # Define default peakfinder options.
 default_peakfinder_options = {
     'cxi': "--peaks=cxi",
@@ -172,6 +198,7 @@ def get_ui(parent):
 --no-half-pixel-shift
 --no-refine
 --no-non-hits-in-stream""")
+# --no-image-data
     
     # ----- Run Button -----
     run_button = tk.Button(frame, text="Run Indexing", bg="lightblue")

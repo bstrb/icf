@@ -5,8 +5,52 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 
 # Import the indexamajig function.
-from gandalf_interations.run_indexamajig import run_indexamajig
-from gandalf_interations.read_stream_write_sol import read_stream_write_sol
+from run_indexamajig import run_indexamajig
+from read_stream_write_sol import read_stream_write_sol
+from adjust_sol_shifts import adjust_sol_shifts
+from get_pearson_symbol import get_pearson_symbol
+# =================================================================
+# =========================== PRINT FILTER ========================
+# =================================================================
+import builtins
+
+_original_print = print
+
+def filtered_print(*args, **kwargs):
+    message = " ".join(str(arg) for arg in args)
+    if message.startswith("WARNING: No solution for"):
+        return
+    _original_print(*args, **kwargs)
+
+print = filtered_print
+
+# =================================================================
+# =========================== CLEAN UP ============================
+# =================================================================
+# Import the necessary modules for cleanup.
+import glob
+import shutil
+import atexit
+import signal
+
+def cleanup_temp_dirs():
+    """Remove all directories in the current working directory that start with 'indexamajig'."""
+    for d in glob.glob("indexamajig*"):
+        if os.path.isdir(d):
+            shutil.rmtree(d)
+            print(f"Removed temporary directory: {d}")
+
+# Register cleanup function to run at program exit.
+atexit.register(cleanup_temp_dirs)
+
+# Optionally, catch termination signals to ensure cleanup on interruptions.
+def signal_handler(sig, frame):
+    cleanup_temp_dirs()
+    exit(0)
+
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
+# =================================================================
 
 # Define default peakfinder options.
 default_peakfinder_options = {
@@ -73,47 +117,31 @@ def get_ui(parent):
     )).grid(row=1, column=2, padx=5)
 
     # List file chooser.
-    tk.Label(file_frame, text="List File (.lst):").grid(row=1, column=0, sticky="w")
+    tk.Label(file_frame, text="List File (.lst):").grid(row=2, column=0, sticky="w")
     list_path_var = tk.StringVar()
     list_entry = tk.Entry(file_frame, textvariable=list_path_var, width=50)
-    list_entry.grid(row=1, column=1, padx=5)
+    list_entry.grid(row=2, column=1, padx=5)
     tk.Button(file_frame, text="Browse", command=lambda: list_path_var.set(
         filedialog.askopenfilename(
             title="Select List File (.lst)",
             filetypes=[("List Files", "*.lst")],
             initialdir=os.getcwd()
         )
-    )).grid(row=1, column=2, padx=5)
-    
-    # Input Stream File chooser.
-    tk.Label(file_frame, text="Input Stream File:").grid(row=2, column=0, sticky="w")
-    input_stream_var = tk.StringVar()
-    input_stream_entry = tk.Entry(file_frame, textvariable=input_stream_var, width=50)
-    input_stream_entry.grid(row=2, column=1, padx=5)
-    tk.Button(file_frame, text="Browse", command=lambda: input_stream_var.set(
-        filedialog.askdirectory(
-            title="Select Input Stream File",
-            initialdir=os.getcwd()
-        )
     )).grid(row=2, column=2, padx=5)
     
-    input_sol_file = read_stream_write_sol(input_stream_var.get(), "cubic")
-
-    extra_flags=[
-    # INDEXING
-    "--indexing=file",
-    f"--fromfile-input-file={input_sol_file}",
-    "--no-check-cell",
-    "--no-check-peaks",
-    "--no-retry",
-    "--no-refine",
-    # INTEGRATION
-    "--integration=rings",
-    "--int-radius=4,5,9",
-    # OUTPUT
-    "--no-non-hits-in-stream",
-    "--fix-profile-radius=70000000",
-    ]
+    # Input Stream File chooser.
+    tk.Label(file_frame, text="Input Stream File:").grid(row=3, column=0, sticky="w")
+    input_stream_var = tk.StringVar()
+    input_stream_entry = tk.Entry(file_frame, textvariable=input_stream_var, width=50)
+    input_stream_entry.grid(row=3, column=1, padx=5)
+    tk.Button(file_frame, text="Browse", command=lambda: input_stream_var.set(
+        filedialog.askopenfilename(
+            title="Select Input Stream File",
+            filetypes=[("Stream Files", "*.stream")],
+            initialdir=os.getcwd()
+        )
+    )).grid(row=3, column=2, padx=5)
+    
     # ----- Basic Parameters -----
     basic_frame = tk.LabelFrame(frame, text="Basic Parameters", padx=10, pady=10)
     basic_frame.pack(fill="x", padx=10, pady=5)
@@ -173,6 +201,25 @@ def get_ui(parent):
         cell_file = cell_path_var.get()
         listfile_path = list_path_var.get()
         input_stream = input_stream_var.get()
+        
+        sol_file = read_stream_write_sol(input_stream, get_pearson_symbol(cell_file))
+        adjusted_sol_file = adjust_sol_shifts(sol_file, os.path.join(os.path.dirname(input_stream), "adjusted_" + os.path.basename(sol_file)))
+
+        extra_flags=[
+        # INDEXING
+        "--indexing=file",
+        f"--fromfile-input-file={adjusted_sol_file}",
+        # "--no-check-cell",
+        # "--no-check-peaks",
+        # "--no-retry",
+        # "--no-refine",
+        # INTEGRATION
+        "--integration=rings",
+        "--int-radius=2,5,10",
+        # OUTPUT
+        # "--no-non-hits-in-stream",
+        ]
+
         if not geom_file or not cell_file or not input_stream:
             messagebox.showerror("Error", "Please ensure Geometry, Cell, and Input Stream File are selected.")
             return
@@ -207,12 +254,14 @@ def get_ui(parent):
             print(" ", f)
         print("\nCombined Flags:", flags_list)
         
+        output_path = os.path.join(os.path.dirname(input_stream), output_base+".stream")
+
         try:
             run_indexamajig(
                 geom_file,
                 listfile_path,
                 cell_file,
-                output_base,
+                output_path,
                 threads,
                 extra_flags=flags_list
             )

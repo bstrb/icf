@@ -1,4 +1,5 @@
 import os
+import re
 
 def process_block(block, output_file, lattice):
     try:
@@ -15,11 +16,16 @@ def process_block(block, output_file, lattice):
                 image = line.split(':', 1)[1].strip()
             elif line.startswith('Event:'):
                 event = line.split(':', 1)[1].strip()
-            elif 'predict_refine/det_shift' in line:
-                det_shifts = line.split()
-                if len(det_shifts) >= 7:
-                    det_shift_x = det_shifts[3]
-                    det_shift_y = det_shifts[6]
+                # Remove a dash followed by one or more digits at the end of the string
+                event = re.sub(r'-\d+$', '', event)
+            elif 'det_shift_x_mm' in line:
+                parts = line.split('=')
+                if len(parts) >= 2:
+                    det_shift_x = parts[1].strip()
+            elif 'det_shift_y_mm' in line:
+                parts = line.split('=')
+                if len(parts) >= 2:
+                    det_shift_y = parts[1].strip()
             elif 'astar' in line:
                 astar_values = ' '.join(line.split()[2:5])
             elif 'bstar' in line:
@@ -62,14 +68,15 @@ def read_stream_write_sol(stream_file_path, lattice):
         if current_block:
             lines_written += process_block(current_block, output_file, lattice)
 
+    print(f"Finished processing. Total lines written to .sol file: {lines_written}")
     return solfile_path
 
 # Example usage
 if __name__ == "__main__":
     # Example input stream file path and lattice value
-    stream_file_path = '/home/buster/UOXm/5x5_0-01/best_results_RCIS_1_2_3_-1_1_1.stream'  # Update this with your actual file path
+    stream_file_path = '/home/bubl3932/files/UOX1/xgandalf_iterations_max_radius_1.8_step_0.5/filtered_metrics/filtered_metrics.stream'  # Update this with your actual file path
     lattice = 'oI'  # Example lattice value, replace with the appropriate lattice for your data
 
     # Process the stream file and write output to the .sol file
-    lines_written = read_stream_write_sol(stream_file_path, lattice)
-    print(f"Finished processing. Total lines written to .sol file: {lines_written}")
+    solfile_path = read_stream_write_sol(stream_file_path, lattice)
+    print(f"Output written to: {solfile_path}")
