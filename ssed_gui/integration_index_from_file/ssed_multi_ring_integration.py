@@ -1,33 +1,17 @@
-# ssed_index_from_file.py - Integration with indexing from file GUI
+# ssed_multi_ring_integration.py- Integration for multiple rings with indexing from file GUI
 #!/usr/bin/env python3
 import os
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
-# Import the indexamajig function.
 from run_indexamajig import run_indexamajig
 from read_stream_write_sol import read_stream_write_sol
 from adjust_sol_shifts import adjust_sol_shifts
 from get_pearson_symbol import get_pearson_symbol
-# =================================================================
-# =========================== PRINT FILTER ========================
-# =================================================================
-import builtins
-
-_original_print = print
-
-def filtered_print(*args, **kwargs):
-    message = " ".join(str(arg) for arg in args)
-    if message.startswith("WARNING: No solution for"):
-        return
-    _original_print(*args, **kwargs)
-
-print = filtered_print
 
 # =================================================================
-# =========================== CLEAN UP ============================
+# =========================== CLEAN UP =============================
 # =================================================================
-# Import the necessary modules for cleanup.
 import glob
 import shutil
 import atexit
@@ -40,10 +24,8 @@ def cleanup_temp_dirs():
             shutil.rmtree(d)
             print(f"Removed temporary directory: {d}")
 
-# Register cleanup function to run at program exit.
 atexit.register(cleanup_temp_dirs)
 
-# Optionally, catch termination signals to ensure cleanup on interruptions.
 def signal_handler(sig, frame):
     cleanup_temp_dirs()
     exit(0)
@@ -71,7 +53,6 @@ default_peakfinder_options = {
 --max-res=500"""
 }
 
-
 def get_ui(parent):
     """
     Creates and returns a Frame containing the complete Gandalf Indexing GUI.
@@ -81,7 +62,7 @@ def get_ui(parent):
     "Run the indexamajig command with indexing from .sol file.\n"
     "Select the input Stream File to be processed.\n"
     "Set basic parameters such as Output Base (name of your sample), Threads (number of used CPU).\n"
-    "Configure Peakfinder options and optionally extra flags.\n"
+    "Configure Peakfinder options, extra flags, and multiple ring-radii sets.\n"
     )
     description_label = tk.Label(frame, text=description, justify=tk.LEFT, wraplength=600)
     description_label.pack(padx=10, pady=10)
@@ -90,7 +71,7 @@ def get_ui(parent):
     file_frame = tk.LabelFrame(frame, text="File Selection", padx=10, pady=10)
     file_frame.pack(fill="x", padx=10, pady=5)
     
-    # Geometry file chooser.
+    # Geometry file chooser
     tk.Label(file_frame, text="Geometry File (.geom):").grid(row=0, column=0, sticky="w")
     geom_path_var = tk.StringVar()
     geom_entry = tk.Entry(file_frame, textvariable=geom_path_var, width=50)
@@ -103,7 +84,7 @@ def get_ui(parent):
         )
     )).grid(row=0, column=2, padx=5)
     
-    # Cell file chooser.
+    # Cell file chooser
     tk.Label(file_frame, text="Cell File (.cell):").grid(row=1, column=0, sticky="w")
     cell_path_var = tk.StringVar()
     cell_entry = tk.Entry(file_frame, textvariable=cell_path_var, width=50)
@@ -116,7 +97,7 @@ def get_ui(parent):
         )
     )).grid(row=1, column=2, padx=5)
 
-    # List file chooser.
+    # List file chooser
     tk.Label(file_frame, text="List File (.lst):").grid(row=2, column=0, sticky="w")
     list_path_var = tk.StringVar()
     list_entry = tk.Entry(file_frame, textvariable=list_path_var, width=50)
@@ -129,7 +110,7 @@ def get_ui(parent):
         )
     )).grid(row=2, column=2, padx=5)
     
-    # Input Stream File chooser.
+    # Input Stream File chooser
     tk.Label(file_frame, text="Input Stream File:").grid(row=3, column=0, sticky="w")
     input_stream_var = tk.StringVar()
     input_stream_entry = tk.Entry(file_frame, textvariable=input_stream_var, width=50)
@@ -160,23 +141,20 @@ def get_ui(parent):
     
     tk.Label(peakfinder_frame, text="Peakfinder:").grid(row=0, column=0, sticky="w")
     peakfinder_option_var = tk.StringVar(value="cxi")
-    # OptionMenu: Display labels and values are as follows.
     peakfinder_options = {"CXI": "cxi", "Peakfinder9": "peakfinder9", "Peakfinder8": "peakfinder8"}
     option_menu = tk.OptionMenu(peakfinder_frame, peakfinder_option_var, *peakfinder_options.values())
     option_menu.grid(row=0, column=1, padx=5, sticky="w")
     
     tk.Label(peakfinder_frame, text="Peakfinder Params:").grid(row=1, column=0, sticky="nw")
-    # Use a Text widget for multi-line parameters.
     peakfinder_params_text = tk.Text(peakfinder_frame, width=60, height=4)
     peakfinder_params_text.grid(row=1, column=1, padx=5, pady=5)
-    # Initialize with default options.
     peakfinder_params_text.insert("1.0", default_peakfinder_options[peakfinder_option_var.get()])
     
-    # When the dropdown changes, update the text widget with the default options.
     def update_peakfinder_params(*args):
         method = peakfinder_option_var.get()
         peakfinder_params_text.delete("1.0", tk.END)
         peakfinder_params_text.insert("1.0", default_peakfinder_options.get(method, ""))
+
     peakfinder_option_var.trace_add("write", update_peakfinder_params)
     
     # ----- Other Extra Flags -----
@@ -186,84 +164,121 @@ def get_ui(parent):
     other_flags_text = tk.Text(other_flags_frame, width=60, height=4)
     other_flags_text.pack(padx=5, pady=5)
     other_flags_text.insert("1.0", """--no-revalidate
---int-radius=2,5,10
 --min-peaks=15
 --no-half-pixel-shift
 --no-refine
 --no-non-hits-in-stream""")
+
+    # ----- Multiple Ring Radius Sets -----
+    multi_int_frame = tk.LabelFrame(frame, text="Multiple Ring Radii Sets", padx=10, pady=10)
+    multi_int_frame.pack(fill="x", padx=10, pady=5)
     
+    ring_sets_label = tk.Label(multi_int_frame, text="Enter one set per line, e.g.:\n2,5,10\n4,5,9\n3,4,7")
+    ring_sets_label.pack(anchor="w")
+    
+    ring_sets_text = tk.Text(multi_int_frame, width=60, height=5)
+    ring_sets_text.pack(padx=5, pady=5)
+    ring_sets_text.insert("1.0", "2,5,10\n4,5,9")
+
     # ----- Run Button -----
     run_button = tk.Button(frame, text="Run Integration", bg="lightblue")
     run_button.pack(padx=10, pady=10)
     
     # ----- Callback for Run Button -----
     def on_run_clicked():
-        # Retrieve file selections.
         geom_file = geom_path_var.get()
         cell_file = cell_path_var.get()
         listfile_path = list_path_var.get()
         input_stream = input_stream_var.get()
         
-        sol_file = read_stream_write_sol(input_stream, get_pearson_symbol(cell_file))
-        adjusted_sol_file = adjust_sol_shifts(sol_file, os.path.join(os.path.dirname(input_stream), "adjusted_" + os.path.basename(sol_file)))
-
-        fixed_flags=[
-        # INDEXING
-        "--indexing=file",
-        f"--fromfile-input-file={adjusted_sol_file}",
-        "--no-refine",
-        # INTEGRATION
-        "--integration=rings",
-        ]
-
         if not geom_file or not cell_file or not input_stream:
             messagebox.showerror("Error", "Please ensure Geometry, Cell, and Input Stream File are selected.")
             return
-        
-        # Retrieve basic parameters.
+
+        # Create .sol from the .stream, then adjust it
+        sol_file = read_stream_write_sol(input_stream, get_pearson_symbol(cell_file))
+        adjusted_sol_file = adjust_sol_shifts(
+            sol_file, 
+            os.path.join(os.path.dirname(input_stream), "adjusted_" + os.path.basename(sol_file))
+        )
+
+        # Basic parameters
         output_base = output_base_var.get()
         try:
             threads = int(threads_var.get())
-        except:
+        except ValueError:
             threads = 24
 
-        # Peakfinder parameters.
+        # Peakfinder parameters
         peakfinder_method = peakfinder_option_var.get()
         peakfinder_params = peakfinder_params_text.get("1.0", tk.END).strip().splitlines()
         
-        
-        # Other flags.
+        # Other flags
         other_flags = [line.strip() for line in other_flags_text.get("1.0", tk.END).splitlines() if line.strip()]
+
+        # Fixed flags needed for indexing from file
+        fixed_flags = [
+            "--indexing=file",
+            f"--fromfile-input-file={adjusted_sol_file}",
+            "--no-refine",
+            "--integration=rings"
+        ]
+
+        # Parse ring radius sets
+        ring_sets_lines = ring_sets_text.get("1.0", tk.END).splitlines()
+        ring_sets = []
+        for line in ring_sets_lines:
+            line = line.strip()
+            if not line:
+                continue
+            ring_sets.append(line)  # e.g. '2,5,10'
         
-        # Combine all flags in the proper order.
-        flags_list = other_flags + peakfinder_params + fixed_flags
-        
-        print("Running gandalf_iterator with the following parameters:")
+        if not ring_sets:
+            messagebox.showerror("Error", "Please specify at least one line of ring radii in 'Multiple Ring Radii Sets'.")
+            return
+
+        print("Running integration with the following parameters:")
         print("Geometry File:", geom_file)
         print("Cell File:", cell_file)
         print("Input Stream File:", input_stream)
         print("Output Base:", output_base)
         print("Threads:", threads)
-        print("\nPeakfinder Option:", peakfinder_method)
-        print("\nOther Flags:")
-        for f in other_flags:
-            print(" ", f)
-        print("\nCombined Flags:", flags_list)
-        
-        output_path = os.path.join(os.path.dirname(input_stream), output_base+".stream")
+        print("Peakfinder Option:", peakfinder_method)
+        print("Other Flags:", other_flags)
+        print("Ring Sets to be used:", ring_sets)
+        print("-----------------------------------------------------")
 
-        try:
-            run_indexamajig(
-                geom_file,
-                listfile_path,
-                cell_file,
-                output_path,
-                threads,
-                extra_flags=flags_list
+        for radii_str in ring_sets:
+            # Build a new set of flags for *this* ring set
+            # We remove any existing `--int-radius=...` from user flags (if present)
+            clean_other_flags = [f for f in other_flags if not f.startswith("--int-radius=")]
+
+            # Now, add the ring radius we want:
+            this_run_flags = clean_other_flags + peakfinder_params + [f"--int-radius={radii_str}"] + fixed_flags
+            
+            # Build output path that includes ring radii string
+            # e.g. output_base="Xtal" + "_int-2_5_10.stream"
+            safe_radii_str = radii_str.replace(",", "_")
+            output_path = os.path.join(
+                os.path.dirname(input_stream),
+                f"{output_base}_int-{safe_radii_str}.stream"
             )
-            print("Indexing completed successfully.")
-        except Exception as e:
-            print("Error during indexing:", e)
+            
+            print(f"\n===== Running with int-radius={radii_str} =====")
+            print("Combined Flags:", this_run_flags)
+            print("Output Stream:", output_path)
+            try:
+                run_indexamajig(
+                    geom_file,
+                    listfile_path,
+                    cell_file,
+                    output_path,
+                    threads,
+                    extra_flags=this_run_flags
+                )
+                print("Indexing completed for ring set:", radii_str)
+            except Exception as e:
+                print(f"Error during indexing for ring set {radii_str}:", e)
     
     run_button.config(command=on_run_clicked)
     

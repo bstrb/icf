@@ -185,7 +185,7 @@ def get_ui(parent):
     tk.Entry(adv_frame, textvariable=xgandalf_tol_var, width=10).grid(row=2, column=1, padx=5)
     
     tk.Label(adv_frame, text="Integration Radius:").grid(row=2, column=2, sticky="w")
-    int_radius_var = tk.StringVar(value="2,5,10")
+    int_radius_var = tk.StringVar(value="2,4,10")
     tk.Entry(adv_frame, textvariable=int_radius_var, width=20).grid(row=2, column=3, padx=5)
     
     # ----- Other Extra Flags -----

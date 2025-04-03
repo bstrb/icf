@@ -1,7 +1,21 @@
 import subprocess
 
-def run_indexamajig(geomfile_path, listfile_path, cellfile_path, output_path, num_threads, extra_flags=None):
-
+def run_indexamajig(geomfile_path: str,
+                     listfile_path: str, 
+                     cellfile_path: str, 
+                     output_path: str, 
+                     num_threads: int, 
+                     extra_flags: list = None):
+    """
+    Run the indexamajig command with the specified parameters.
+    :param geomfile_path: Path to the geometry file.
+    :param listfile_path: Path to the list file.
+    :param cellfile_path: Path to the cell file.
+    :param output_path: Path to the output file.
+    :param num_threads: Number of threads to use.
+    :param extra_flags: Additional flags to pass to indexamajig.
+    :return: None
+    """
     if extra_flags is None:
         extra_flags = []
 
