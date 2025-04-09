@@ -49,6 +49,87 @@ def process_single_image(img, mask, n_wedges, n_rad_bins, xatol, fatol, verbose,
     )
     return refined_center
 
+# def process_images_apply_async(
+#     image_file,
+#     mask,
+#     frame_interval=10,
+#     xatol=0.01,
+#     fatol=10,
+#     n_wedges=4,
+#     n_rad_bins=100,
+#     xmin=0,
+#     xmax=1024,
+#     ymin=0,
+#     ymax=1024,
+#     verbose=False
+# ):
+#     """
+#     Processes the specified frames from the H5 image file in parallel using apply_async
+#     (without chunking) so that the progress bar is updated for every computed center.
+#     Results are stored in a CSV in the same folder as the image file.
+#     """
+#     # 1) Open the H5 file to get the number of images and index dataset.
+#     with h5py.File(image_file, 'r') as f:
+#         n_images = f['/entry/data/images'].shape[0]
+#         index_dset = f.get('/entry/data/index')
+#         if index_dset is not None:
+#             data_index_all = index_dset[:]
+#         else:
+#             raise ValueError("Dataset '/entry/data/index' is required but not found.")
+
+#     # 2) Create a DataFrame to store centers.
+#     df = pd.DataFrame({
+#         "frame_number": np.arange(n_images),
+#         "data_index": data_index_all,
+#         "center_x": np.full(n_images, np.nan, dtype=float),
+#         "center_y": np.full(n_images, np.nan, dtype=float),
+#     })
+
+#     # 3) Identify which frames to process.
+#     frames_to_process = set([0, n_images - 1]) | {i for i in range(n_images) if i % frame_interval == 0}
+#     frames_to_process = sorted(frames_to_process)
+
+#     # 4) Build a list of tasks.
+#     tasks = []
+#     for fn in frames_to_process:
+#         tasks.append((
+#             fn,         # frame number
+#             image_file, # image file path
+#             mask,
+#             n_wedges, n_rad_bins,
+#             xatol, fatol,
+#             verbose,
+#             xmin, xmax, ymin, ymax
+#         ))
+
+#     # 5) Create a tqdm progress bar.
+#     pbar = tqdm(total=len(tasks), desc="Processing frames", unit="frame")
+
+#     # 6) Define a callback to update the progress bar and DataFrame.
+#     def update_callback(result):
+#         frame_num, cx, cy = result
+#         df.at[frame_num, "center_x"] = cx
+#         df.at[frame_num, "center_y"] = cy
+#         pbar.update(1)
+
+#     # 7) Process each task individually using apply_async.
+#     with Pool() as pool:
+#         async_results = [pool.apply_async(compute_center_for_frame, args=(task,), callback=update_callback)
+#                          for task in tasks]
+#         # Wait for all tasks to finish.
+#         [res.get() for res in async_results]
+
+#     pbar.close()
+
+#     # 8) Keep only rows for frames that were processed and write out the CSV
+#     df = df[df["frame_number"].isin(frames_to_process)]
+
+#     csv_file = os.path.join(
+#         os.path.dirname(image_file),
+#         f"centers_xatol_{xatol}_frameinterval_{frame_interval}.csv"
+#     )
+#     df.to_csv(csv_file, index=False)
+#     print(f"Created CSV with {len(df)} found centers in:\n{csv_file}")
 
 def process_images_apply_async(
     image_file,
@@ -69,14 +150,17 @@ def process_images_apply_async(
     (without chunking) so that the progress bar is updated for every computed center.
     Results are stored in a CSV in the same folder as the image file.
     """
-    # 1) Open the H5 file to get the number of images and index dataset.
-    with h5py.File(image_file, 'r') as f:
+    # 1) Open the H5 file in read/write mode to get the number of images and index dataset.
+    with h5py.File(image_file, 'r+') as f:
         n_images = f['/entry/data/images'].shape[0]
         index_dset = f.get('/entry/data/index')
-        if index_dset is not None:
-            data_index_all = index_dset[:]
+        if index_dset is None:
+            # If the index dataset is missing, create it using a sequential index.
+            print("Dataset '/entry/data/index' is missing. Creating it automatically.")
+            data_index_all = np.arange(n_images)
+            f.create_dataset('/entry/data/index', data=data_index_all)
         else:
-            raise ValueError("Dataset '/entry/data/index' is required but not found.")
+            data_index_all = index_dset[:]
 
     # 2) Create a DataFrame to store centers.
     df = pd.DataFrame({
@@ -93,15 +177,11 @@ def process_images_apply_async(
     # 4) Build a list of tasks.
     tasks = []
     for fn in frames_to_process:
-        tasks.append((
-            fn,         # frame number
-            image_file, # image file path
-            mask,
-            n_wedges, n_rad_bins,
-            xatol, fatol,
-            verbose,
-            xmin, xmax, ymin, ymax
-        ))
+        tasks.append((fn, image_file, mask,
+                      n_wedges, n_rad_bins,
+                      xatol, fatol,
+                      verbose,
+                      xmin, xmax, ymin, ymax))
 
     # 5) Create a tqdm progress bar.
     pbar = tqdm(total=len(tasks), desc="Processing frames", unit="frame")
@@ -122,12 +202,9 @@ def process_images_apply_async(
 
     pbar.close()
 
-    # 8) Keep only rows for frames that were processed and write out the CSV
+    # 8) Keep only rows for frames that were processed and write out the CSV.
     df = df[df["frame_number"].isin(frames_to_process)]
-
-    csv_file = os.path.join(
-        os.path.dirname(image_file),
-        f"centers_xatol_{xatol}_frameinterval_{frame_interval}.csv"
-    )
+    csv_file = os.path.join(os.path.dirname(image_file),
+                            f"centers_xatol_{xatol}_frameinterval_{frame_interval}.csv")
     df.to_csv(csv_file, index=False)
     print(f"Created CSV with {len(df)} found centers in:\n{csv_file}")
