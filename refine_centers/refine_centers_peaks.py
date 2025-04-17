@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 Refine detector beam‑centre using PEAK positions married to the nearest indexed
-(h,k,l).  Runs each diffraction “chunk” in parallel and writes
+(h,k,l). Runs each diffraction “chunk” in parallel and writes
 refined_centers.csv + two diagnostic plots.
 """
 
@@ -19,6 +19,7 @@ from scipy.spatial import cKDTree
 # ══════════════════════════════════════════════════════════════════════
 # Utility: match peaks to nearest reflection, with filters
 # ══════════════════════════════════════════════════════════════════════
+
 def match_peaks_to_reflections(
     peaks,
     reflections,
@@ -57,10 +58,10 @@ def match_peaks_to_reflections(
 
     return matched
 
-
 # ══════════════════════════════════════════════════════════════════════
 # 1) Parse geometry from header
 # ══════════════════════════════════════════════════════════════════════
+
 def parse_header_geometry(stream_text):
     """Extract wavelength, clen, res, pixel size from the geometry block."""
     geom = {}
@@ -84,10 +85,10 @@ def parse_header_geometry(stream_text):
     geom["pixel_size_mm"] = 1000.0 / geom["res"] if geom.get("res") else 0.1
     return geom
 
-
 # ══════════════════════════════════════════════════════════════════════
 # 2) Parse one chunk
 # ══════════════════════════════════════════════════════════════════════
+
 def parse_stream_chunk(chunk):
     """
     Returns
@@ -154,9 +155,9 @@ def parse_stream_chunk(chunk):
 # ══════════════════════════════════════════════════════════════════════
 # 3) Diffraction model + least‑squares
 # ══════════════════════════════════════════════════════════════════════
+
 def build_orientation_matrix(astar, bstar, cstar):
     return np.column_stack((astar, bstar, cstar))
-
 
 def predict_fs_ss(h, k, l, R, k_in, dist_mm, px_mm, cx, cy):
     hkl = np.array([h, k, l])
@@ -170,7 +171,6 @@ def predict_fs_ss(h, k, l, R, k_in, dist_mm, px_mm, cx, cy):
     ss = cy + (t * k_scat[1]) / px_mm
     return fs, ss
 
-
 def residual_beam_center(params, reflections, R, k_in, dist_mm, px_mm):
     cx, cy = params
     res = []
@@ -179,7 +179,6 @@ def residual_beam_center(params, reflections, R, k_in, dist_mm, px_mm):
         if np.isfinite(fs_p) and np.isfinite(ss_p):
             res.extend([fs_p - fs_m, ss_p - ss_m])
     return np.asarray(res)
-
 
 def refine_beam_center(
     astar,
@@ -205,10 +204,10 @@ def refine_beam_center(
     )
     return tuple(res.x)
 
-
 # ══════════════════════════════════════════════════════════════════════
 # 4) Worker for one chunk
 # ══════════════════════════════════════════════════════════════════════
+
 def process_one_chunk(
     chunk,
     geom,
@@ -252,11 +251,19 @@ def process_one_chunk(
     )
     return evt_idx, cx_ref, cy_ref
 
+# ══════════════════════════════════════════════════════════════════════
+# 5) Main function
+# ══════════════════════════════════════════════════════════════════════
 
-# ══════════════════════════════════════════════════════════════════════
-# 5) Main driver
-# ══════════════════════════════════════════════════════════════════════
-def parse_stream_and_refine_multiproc(stream_file):
+def parse_stream_and_refine_multiproc(
+    stream_file,
+    inten_thr=200.0,
+    match_radius_px=2.0,
+    min_r=50.0,
+    max_r=500.0,
+    guess_cx=512.0,
+    guess_cy=512.0,):
+    
     with open(stream_file, "r") as fh:
         stream_text = fh.read()
 
@@ -274,13 +281,18 @@ def parse_stream_and_refine_multiproc(stream_file):
     worker = partial(
         process_one_chunk,
         geom=geom,
-        inten_thr=200.0,
-        match_radius_px=2.0,
-        min_r=50.0,
-        max_r=500.0,
-        guess_cx=512.0,
-        guess_cy=512.0,
+        inten_thr=inten_thr,
+        match_radius_px=match_radius_px,
+        min_r=min_r,
+        max_r=max_r,
+        guess_cx=guess_cx,
+        guess_cy=guess_cy,
     )
+    print("Processing chunks...")
+    print("Using intensity threshold:", inten_thr)
+    print("Using match radius:", match_radius_px)
+    print("Using min/max radius:", min_r, max_r)
+    print("Using guess beam centre:", guess_cx, guess_cy)
 
     results = []
     with ProcessPoolExecutor() as ex:
@@ -317,10 +329,17 @@ def parse_stream_and_refine_multiproc(stream_file):
     print(f"Results written to {csv_path}")
     return results
 
+# ══════════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
 
-# ══════════════════════════════════════════════════════════════════════
-# CLI entry‑point
-# ══════════════════════════════════════════════════════════════════════
 if __name__ == "__main__":
-    stream_file = "/Users/xiaodong/Downloads/filtered_metrics.stream"
-    parse_stream_and_refine_multiproc(stream_file)
+
+    stream_file = "/home/bubl3932/files/MFM300_VIII/MFM300_VIII_spot2_20250408_1511/xgandalf_iterations_max_radius_0_step_1/MFM300_0_0.stream"
+    
+    parse_stream_and_refine_multiproc(stream_file,
+                                    inten_thr=200.0,
+                                    match_radius_px=2.0,
+                                    min_r=50.0,
+                                    max_r=500.0
+                                    )

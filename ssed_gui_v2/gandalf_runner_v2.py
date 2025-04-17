@@ -204,7 +204,7 @@ def main():
         "geom_file":  "/home/bubl3932/files/MFM300_VIII/MFM300_VIII_spot2_20250408_1511/MFM.geom",
         "cell_file":  "/home/bubl3932/files/MFM300_VIII/MFM300_VIII_spot2_20250408_1511/MFM.cell",
         "input_folder": "/home/bubl3932/files/MFM300_VIII/MFM300_VIII_spot2_20250408_1511",
-        "output_base": "MFM300_clen_0.297x1",
+        "output_base": "MFM300",
         "threads": 24,
         "max_radius": 0,
         "step": 1,
@@ -215,6 +215,7 @@ def main():
             "--min-peaks=50",
             "--tolerance=10,10,10,5",
             "--xgandalf-sampling-pitch=5",
+            "--fix-profile-radius=20000000",
             "--xgandalf-grad-desc-iterations=1",
             "--xgandalf-tolerance=0.02",
             "--int-radius=2,5,10",
@@ -224,9 +225,9 @@ def main():
             "--no-non-hits-in-stream"
         ],
         # 2) The overrides
-        "override_wavelength": 0.019687*1,
+        "override_wavelength": None,
         "override_adu": None,
-        "override_clen": 0.297/1,
+        "override_clen": None,
         # "override_clen": 0.295/0.85,
         "override_res": None,
         "override_corner_x": None,
