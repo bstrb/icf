@@ -328,6 +328,6 @@ def parse_stream_and_refine_multiproc(stream_file):
 # EXAMPLE USAGE:
 if __name__ == "__main__":
     # stream_file = "/Users/xiaodong/Desktop/UOX-data/UOX1/centers_xatol_0.01_frameinterval_10_lowess_0.37_shifted_0.5_-0.3/xgandalf_iterations_max_radius_0.0_step_0.5/Xtal_0.0_0.0.stream"
-    stream_file = "/home/bubl3932/files/UOX1/UOX1_original/centers_xatol_0.01_frameinterval_10_lowess_0.10_shifted_0.5_-0.3/xgandalf_iterations_max_radius_1.8_step_0.5/UOX_0.0_0.0.stream"
+    stream_file = "/Users/xiaodong/Downloads/filtered_metrics.stream"
     results = parse_stream_and_refine_multiproc(stream_file)
     # results is a list of (event_index, cx_refined, cy_refined).
