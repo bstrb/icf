@@ -201,24 +201,24 @@ def main():
     # 1) Hard-coded defaults for main parameters
     #    (You can prompt for these if you want, but here we keep them pre-set.)
     params = {
-        "geom_file":  "/home/bubl3932/files/MFM300_VIII/MFM300_VIII_spot2_20250408_1511/MFM.geom",
-        "cell_file":  "/home/bubl3932/files/MFM300_VIII/MFM300_VIII_spot2_20250408_1511/MFM.cell",
-        "input_folder": "/home/bubl3932/files/MFM300_VIII/MFM300_VIII_spot2_20250408_1511",
+        "geom_file":  "/home/bubl3932/files/MFM300_VIII/simulation-2/MFM.geom",
+        "cell_file":  "/home/bubl3932/files/MFM300_VIII/simulation-2/MFM.cell",
+        "input_folder": "/home/bubl3932/files/MFM300_VIII/simulation-2",
         "output_base": "MFM300",
         "threads": 24,
-        "max_radius": 0,
-        "step": 1,
-        "peakfinder_method": "cxi",   # or "peakfinder9" or "peakfinder8"
+        "max_radius": 1,
+        "step": 0.5,
+        "peakfinder_method": "peakfinder9",   # or "peakfinder9" or "peakfinder8"
         "peakfinder_params": [],
         "advanced_flags": [],
         "other_flags": [
             "--min-peaks=50",
             "--tolerance=10,10,10,5",
             "--xgandalf-sampling-pitch=5",
-            "--fix-profile-radius=20000000",
+            "--fix-profile-radius=50000000",
             "--xgandalf-grad-desc-iterations=1",
             "--xgandalf-tolerance=0.02",
-            "--int-radius=2,5,10",
+            "--int-radius=4,7,13",
             "--no-revalidate",
             "--no-half-pixel-shift",
             "--no-refine",
@@ -228,10 +228,9 @@ def main():
         "override_wavelength": None,
         "override_adu": None,
         "override_clen": None,
-        # "override_clen": 0.295/0.85,
         "override_res": None,
-        "override_corner_x": None,
-        "override_corner_y": None,
+        "override_corner_x": -512.5,
+        "override_corner_y": -512.5,
     }
 
     # We'll let you loop, so you can run multiple times without re-entering everything.
@@ -293,10 +292,10 @@ def main():
                 "cxi": ["--peaks=cxi"],
                 "peakfinder9": [
                     "--peaks=peakfinder9",
-                    "--min-snr=1",
-                    "--min-snr-peak-pix=6",
-                    "--min-sig=9",
-                    "--min-peak-over-neighbour=5",
+                    "--min-snr=3",
+                    "--min-snr-peak-pix=3",
+                    "--min-sig=2",
+                    "--min-peak-over-neighbour=3",
                     "--local-bg-radius=5"
                 ],
                 "peakfinder8": [

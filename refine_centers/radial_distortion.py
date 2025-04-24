@@ -158,10 +158,9 @@ def process_stream(
 
 def main(argv=None):
     
-    stream_file = "/home/bubl3932/files/MFM300_VIII/MFM300_VIII_spot2_20250408_1511/xgandalf_iterations_max_radius_0_step_1/MFM300_0_0.stream"
-
+    stream_file = "/home/bubl3932/files/MFM300_VIII/simulation-2/xgandalf_iterations_max_radius_0_step_1/MFM300_0_0.stream"
     # Treat zero or negative as 'no filter'
-    max_xy_dist = 0.1
+    max_xy_dist = 1
 
     text = Path(stream_file).read_text()
 
@@ -169,7 +168,7 @@ def main(argv=None):
         text,
         cx=502.5,
         cy=510.5,
-        max_events=10000,
+        max_events=1000,
         max_xy_dist=max_xy_dist,
     )
 

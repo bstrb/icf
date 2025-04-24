@@ -99,6 +99,6 @@ def convert_hkl_crystfel_to_shelx(input_dir: str):
   
 if __name__ == "__main__":
 
-    input_dir = "/home/bubl3932/files/LTA_sim/simulation-43/merged_IQM_1_1_1_1_1_1_merge_5_iter"
+    input_dir = "/home/bubl3932/files/MFM300_VIII/MFM300_VIII_spot9_20250408_1441/xgandalf_iterations_max_radius_0.18_step_0.1/filtered_metrics-1/filtered_metrics_merge_5_iter/merge-trial-2"
     
     convert_hkl_crystfel_to_shelx(input_dir)

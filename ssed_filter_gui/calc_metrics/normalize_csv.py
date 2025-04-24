@@ -113,7 +113,8 @@ def normalize_csv(folder_path,
             for g in group:
                 writer.writerow(g)
 
-    print(f"Normalized CSV written to {output_csv_path}")
+    # print(f"Normalized CSV written to {output_csv_path}")
+    print(f"Wrote normalized CSV → {output_csv_path}")
 
 if __name__ == "__main__":
     folder_path = "/home/buster/UOX1/different_index_params/3x3"
