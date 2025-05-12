@@ -14,6 +14,7 @@ from filter_and_combine.interactive_iqm import (
     filter_rows,
     write_filtered_csv,
     filter_and_combine,          # ← new helper
+    create_combined_metric,      # ← add this line
 )
 
 # Global variables to store key file paths and data.

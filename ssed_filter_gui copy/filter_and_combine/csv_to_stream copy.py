@@ -26,7 +26,6 @@ from concurrent.futures import (
     as_completed,
 )
 from typing import Dict, List, Set, Tuple
-from tqdm import tqdm
 
 BEGIN = b"----- Begin chunk -----"
 END   = b"----- End chunk -----\n"
@@ -129,6 +128,8 @@ def write_stream_from_filtered_csv(
 
     # 3.2 Decide concurrency strategy
     if mode == "auto":
+        # crude heuristic: NVMe often reports >1 000 000 kB/s in /proc/diskstats
+        # Fall back to serial if the disk is clearly spinning rust.
         mode = "threads" if os.statvfs(filtered_csv_path).f_bsize >= 4096 else "serial"
 
     files = list(wanted_per_file.items())
@@ -136,20 +137,14 @@ def write_stream_from_filtered_csv(
     cache : Dict[str,Tuple[str,Dict[str,str]]] = {}  # stream→(header,chunks)
     print(f"[csv_to_stream]  Parsing {len(files)} stream files  (mode={mode})")
 
-    # Progress bar for scanning files
     if mode == "serial":
-        iterator = files
-    else:
-        iterator = files
-
-    if mode == "serial":
-        for fpath, evs in tqdm(iterator, desc="Scanning files", unit="file"):
+        for fpath, evs in files:
             cache[fpath] = _scan_one_file((fpath, evs))[1:]
     else:
         Executor = ThreadPoolExecutor if mode == "threads" else ProcessPoolExecutor
         with Executor(max_workers=max_workers) as ex:
             futs = {ex.submit(_scan_one_file, (f, evs)): f for f, evs in files}
-            for fut in tqdm(as_completed(futs), desc="Scanning files", total=len(futs), unit="file"):
+            for fut in as_completed(futs):
                 fpath, hdr, chunks = fut.result()
                 cache[fpath] = (hdr, chunks)
 
@@ -158,7 +153,7 @@ def write_stream_from_filtered_csv(
     END_txt = END.decode()
 
     with open(output_stream_path, "w") as out:
-        for fpath, evt in tqdm(rows, desc="Writing chunks", unit="chunk"):
+        for fpath, evt in rows:
             hdr, chunks = cache[fpath]
 
             if not header_written:
@@ -172,9 +167,11 @@ def write_stream_from_filtered_csv(
 
             out.write(chunk)
             if not chunk.rstrip().endswith(END_txt):
-                out.write(END_txt + "\n")
+                out.write(END_txt)
+                # out.write(END_txt + "\n")
 
     print("[csv_to_stream]  Done →", output_stream_path)
+
 
 # ────────────────────────────────────────────────────────────────────────────────
 # 4.  CLI for ad-hoc use

@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Load the CSV file (change the filename as needed)
-input_file = "/Users/xiaodong/Downloads/normalized_metrics.csv"
+input_file = "/home/bubl3932/files/MFM300_VIII/Al_check_0p26/xgandalf_iterations_max_radius_3.0_step_0.5/normalized_metrics.csv"
 df = pd.read_csv(input_file)
 
 # Remove rows with event header info

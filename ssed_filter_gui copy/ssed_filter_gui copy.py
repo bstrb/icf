@@ -7,6 +7,7 @@ import separate_gui.ssed_gandalf_iterator as ssed_gandalf_iterator  # assuming t
 import separate_gui.ssed_visualization  as ssed_visualization # assuming this file is saved as ssed_visualization.py
 import separate_gui.ssed_calc_metrics  as ssed_calc_metrics # assuming this file is saved as ssed_calc_metrics.py
 import separate_gui.ssed_filter_combine  as ssed_filter_combine # assuming this file is saved as ssed_filter_combine.py
+import separate_gui.ssed_merge_convert  as ssed_merge_convert # assuming this file is saved as ssed_merge_convert.py
 
 def main():
     root = tk.Tk()
@@ -32,10 +33,16 @@ def main():
     ui = ssed_filter_combine.get_ui(filter_scrollable)
     ui.pack(fill="both", expand=True)
 
+    merge_frame = tk.Frame(notebook)
+    ui = ssed_merge_convert.get_ui(merge_frame)
+    ui.pack(fill="both", expand=True)
+
+    
     notebook.add(indexing_frame, text="Indexing")
     notebook.add(vis_frame, text="Visualization")
     notebook.add(metrics_frame, text="Evaluate Metrics")
     notebook.add(filter_frame, text="Filter and Combine")
+    notebook.add(merge_frame, text="Merge and Convert")
 
     root.mainloop()
 

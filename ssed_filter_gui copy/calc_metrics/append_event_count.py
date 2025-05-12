@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import os
 import glob
 import re
@@ -46,7 +45,7 @@ def process_file(filepath):
 
     Args:
         filepath (str): The path to the .stream file to process.
-    """ 
+    """
     # Pattern to capture:
     #   Group 1: "Event:" followed by optional spaces and then "//"
     #   Group 2: The event number (one or more digits)

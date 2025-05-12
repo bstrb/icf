@@ -11,9 +11,9 @@ from filter_and_combine.interactive_iqm import (
     read_metric_csv,
     select_best_results_by_event,
     get_metric_ranges,
+    create_combined_metric,
     filter_rows,
-    write_filtered_csv,
-    filter_and_combine,          # ← new helper
+    write_filtered_csv
 )
 
 # Global variables to store key file paths and data.
@@ -181,108 +181,63 @@ def get_ui(parent):
         
         def create_or_update_combined_metric():
             print("\n" + "="*50)
-            print("COMBINED METRIC CREATION (via filter_and_combine)")
-
-            weights_list     = [weight_fields[m].get() for m in metrics_in_order]
-            selected_metrics = metrics_in_order     # same order
-            # No pre‑filter here – we’re only building the metric:
-            rows_with_metric = filter_and_combine(
-                rows              = all_rows,
-                pre_filter         = None,
-                metrics_to_combine = selected_metrics,
-                weights            = weights_list,
-                new_metric_name    = "combined_metric",
+            print("COMBINED METRIC CREATION")
+            selected_metrics = metrics_in_order
+            weights_list = [weight_fields[m].get() for m in metrics_in_order]
+            create_combined_metric(
+                rows=all_rows,
+                metrics_to_combine=selected_metrics,
+                weights=weights_list,
+                new_metric_name="combined_metric"
             )
-
-            combined_vals = [r["combined_metric"] for r in rows_with_metric]
-            if not combined_vals:
+            combined_vals = [r["combined_metric"] for r in all_rows if "combined_metric" in r]
+            if combined_vals:
+                cmin, cmax = min(combined_vals), max(combined_vals)
+                current_val = combined_threshold_var.get()
+                if current_val < cmin or current_val > cmax:
+                    current_val = cmax
+                combined_threshold_scale.config(from_=cmin, to=cmax)
+                combined_threshold_var.set(current_val)
+                print("Combined metric created successfully!")
+                print(f"  * Min value: {cmin:.3f}")
+                print(f"  * Max value: {cmax:.3f}")
+                print("Adjust the slider and click 'Apply Combined Metric Threshold (Best Rows)' to filter.")
+            else:
                 print("Failed to create combined metric. Check your weights.")
-                return
-
-            cmin, cmax = min(combined_vals), max(combined_vals)
-            current_val = combined_threshold_var.get()
-            if current_val < cmin or current_val > cmax:
-                current_val = cmax
-            combined_threshold_scale.config(from_=cmin, to=cmax)
-            combined_threshold_var.set(current_val)
-
-            print(f"Combined metric created successfully!\n  * Min: {cmin:.3f}\n  * Max: {cmax:.3f}")
-            print("Adjust the slider and click 'Apply Combined Metric Threshold (Best Rows)' to filter.")
-
         
         create_combined_button.config(command=create_or_update_combined_metric)
         
         filter_combined_button = tk.Button(combined_frame, text="Apply Combined Metric Threshold (Best Rows)", bg="lightblue")
         filter_combined_button.grid(row=row+1, column=0, columnspan=2, pady=5)
+        
         def on_filter_combined_clicked():
             # Close any previous plots.
             plt.close('all')
             print("\n" + "="*50)
-            print("COMBINED METRIC FILTERING (with pre‑filter)")
-
-            # ------------------------------------------------------------------
-            # 1. Gather *per‑metric* thresholds from the sliders in Section 1
-            # ------------------------------------------------------------------
-            pre_thresholds = {m: metric_sliders[m].get() for m in metrics_in_order}
-
-            # ------------------------------------------------------------------
-            # 2. Gather weights from the text boxes in Section 2
-            # ------------------------------------------------------------------
-            weights_list      = [weight_fields[m].get() for m in metrics_in_order]
-            selected_metrics  = metrics_in_order                                 # same order
-
-            # ------------------------------------------------------------------
-            # 3. Run one helper that does:
-            #    • filter_rows(all_rows, pre_thresholds)
-            #    • create_combined_metric(..., weights_list)
-            # ------------------------------------------------------------------
-            pre_filtered_rows = filter_and_combine(
-                rows               = all_rows,
-                pre_filter          = pre_thresholds,
-                metrics_to_combine  = selected_metrics,
-                weights             = weights_list,
-                new_metric_name     = "combined_metric",
-            )
-
-            print(f"{len(all_rows)} total rows  →  "
-                f"{len(pre_filtered_rows)} survive the separate‑metric thresholds")
-
-            if not pre_filtered_rows:
-                print("No rows left after the pre‑filter – nothing to combine.")
+            print("COMBINED METRIC FILTERING")
+            threshold = combined_threshold_var.get()
+            filtered_combined = [r for r in all_rows if "combined_metric" in r and r["combined_metric"] <= threshold]
+            print(f"Filtering rows by combined_metric ≤ {threshold:.3f}")
+            if not filtered_combined:
+                print("No rows passed the combined metric threshold.")
                 return
-
-            # ------------------------------------------------------------------
-            # 4. Now apply the *combined‑metric* slider threshold
-            # ------------------------------------------------------------------
-            combined_thr   = combined_threshold_var.get()
-            by_combined    = [r for r in pre_filtered_rows if r['combined_metric'] <= combined_thr]
-
-            print(f"... {len(by_combined)} remain after combined_metric ≤ {combined_thr:.3f}")
-
-            if not by_combined:
-                print("No rows passed the combined‑metric threshold.")
-                return
-
-            # ------------------------------------------------------------------
-            # 5. Best‑row‑per‑event → CSV + histogram (unchanged from your code)
-            # ------------------------------------------------------------------
-            grouped = {}
-            for r in by_combined:
-                grouped.setdefault(r['event_number'], []).append(r)
-
-            best_filtered = select_best_results_by_event(grouped, sort_metric='combined_metric')
-            print(f"{len(best_filtered)} best rows selected (one per event).")
+            # Group filtered rows by event_number.
+            grouped_filtered = {}
+            for r in filtered_combined:
+                event = r.get("event_number")
+                grouped_filtered.setdefault(event, []).append(r)
+            best_filtered = select_best_results_by_event(grouped_filtered, sort_metric="combined_metric")
+            print(f"{len(filtered_combined)} rows passed threshold, {len(best_filtered)} best rows selected per event.")
             write_filtered_csv(best_filtered, global_filtered_csv_path[0])
-            print(f"Wrote → {global_filtered_csv_path[0]}")
-
+            print(f"Wrote {len(best_filtered)} best-filtered rows to {global_filtered_csv_path[0]}")
             plt.figure(figsize=(8, 6))
-            plt.hist([r['combined_metric'] for r in best_filtered], bins=20)
+            values = [r["combined_metric"] for r in best_filtered]
+            plt.hist(values, bins=20)
             plt.title("Histogram of Best Rows (combined_metric)")
             plt.xlabel("combined_metric")
             plt.ylabel("Count")
             plt.tight_layout()
             plt.show()
-
         
         filter_combined_button.config(command=on_filter_combined_clicked)
         
