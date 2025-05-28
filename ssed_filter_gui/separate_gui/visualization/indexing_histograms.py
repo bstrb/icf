@@ -63,8 +63,8 @@ def plot_indexing_rate(folder_path):
     )
 
     # pretty extras
-    ax3d.set_xlabel("X coordinate", labelpad=8)
-    ax3d.set_ylabel("Y coordinate", labelpad=8)
+    ax3d.set_xlabel("X coordinate shift (pixels)", labelpad=8)
+    ax3d.set_ylabel("Y coordinate shift (pixels)", labelpad=8)
     ax3d.set_zlabel("Indexing rate (%)", labelpad=8)
     ax3d.set_title("Indexing rate surface", pad=12, fontsize=12)
     ax3d.view_init(elev=30, azim=135)
@@ -110,8 +110,8 @@ def plot_indexing_rate(folder_path):
         norm=norm,
         shading="auto",
     )
-    ax2d.set_xlabel("X coordinate")
-    ax2d.set_ylabel("Y coordinate")
+    ax2d.set_xlabel("X coordinate shift (pixels)")
+    ax2d.set_ylabel("Y coordinate shift (pixels)")
     ax2d.set_title("Heat-map (top view)")
 
     fig.colorbar(hm, ax=ax2d, fraction=0.046, pad=0.04).set_label("Indexing rate (%)")
