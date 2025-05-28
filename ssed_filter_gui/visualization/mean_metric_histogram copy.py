@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 # ──────────────────────────────────────────────────────────────
 # 1. Load and pre-clean the CSV
 # ──────────────────────────────────────────────────────────────
-csv_path = "/home/bubl3932/files/simulations/cP_LTA/sim_003/xgandalf_iterations_max_radius_1.0_step_0.1/unnormalized_metrics.csv"
+csv_path = "/home/bubl3932/files/simulations/cP_LTA/sim_003/xgandalf_iterations_max_radius_1.0_step_0.1/normalized_metrics.csv"
 df = pd.read_csv(csv_path)
 
 # strip the header rows that contain only "Event number: …"
@@ -36,8 +36,8 @@ df.dropna(subset=['x', 'y'], inplace=True)
 # 3. Plot heat-maps of each metric
 # ──────────────────────────────────────────────────────────────
 metrics = [
-    'weighted_rmsd', 'length_deviation',
-    'angle_deviation'
+    'weighted_rmsd', 'fraction_outliers', 'length_deviation',
+    'angle_deviation', 'peak_ratio', 'percentage_unindexed'
 ]
 
 fig, axes = plt.subplots(2, 3, figsize=(18, 10))
