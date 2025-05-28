@@ -54,7 +54,7 @@ from PyQt6.QtWidgets import (
 # Project‑specific import ‒ identical to Tkinter version
 # ---------------------------------------------------------------------------
 try:
-    from gandalf_interations.gandalf_radial_iterator import gandalf_iterator
+    from gandalf_iterations.gandalf_radial_iterator import gandalf_iterator
 except ImportError as exc:
     raise SystemExit(
         "Could not import gandalf_iterator. Ensure your PYTHONPATH contains "
