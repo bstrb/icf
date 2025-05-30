@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 # ──────────────────────────────────────────────────────────────
 # 1. Load and pre-clean the CSV
 # ──────────────────────────────────────────────────────────────
-csv_path = "/home/bubl3932/files/MFM300_VIII/MFM300_UK_spot2_220m_0deg_150nm_20250524_1151/xgandalf_iterations_max_radius_2.0_step_0.5/unnormalized_metrics.csv"
-# csv_path = "/home/bubl3932/files/simulations/cP_LTA/sim_004/xgandalf_iterations_max_radius_2.0_step_0.2/normalized_metrics.csv"
+csv_path = "/home/bubl3932/files/MFM300_VIII/20250408/MFM_spot3_streams/normalized_metrics.csv"
+csv_path = "/home/bubl3932/files/simulations/cP_LTA/sim_004/xgandalf_iterations_max_radius_2.0_step_0.2/normalized_metrics.csv"
 df = pd.read_csv(csv_path)
 
 # strip the header rows that contain only "Event number: …"
@@ -48,7 +48,7 @@ for ax, metric in zip(axes, metrics):
     # median value at each (x, y) location
     z = (
         df.groupby(['x', 'y'])[metric]
-          .mean()
+          .median()
           .reset_index()
           .pivot(index='y', columns='x', values=metric)
           .sort_index()            # y low → bottom
@@ -65,7 +65,7 @@ for ax, metric in zip(axes, metrics):
         ]
     )
 
-    ax.set_title(f'Mean {metric}')
+    ax.set_title(f'Median {metric}')
     ax.set_xlabel('x coordinate shift (pixels)')
     ax.set_ylabel('y coordinate shift (pixels)')
     fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
