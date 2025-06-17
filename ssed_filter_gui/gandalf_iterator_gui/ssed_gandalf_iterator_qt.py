@@ -192,7 +192,7 @@ class GandalfWindow(QMainWindow):
         self.max_radius_spin.setRange(0.0, 10.0)
         self.max_radius_spin.setDecimals(3)
         self.max_radius_spin.setSingleStep(0.05)
-        self.max_radius_spin.setValue(0.1)
+        self.max_radius_spin.setValue(0.0)
         bg.addWidget(self.max_radius_spin, 2, 1)
 
         bg.addWidget(QLabel("Step:"), 3, 0)
@@ -260,7 +260,7 @@ class GandalfWindow(QMainWindow):
         ag.addWidget(self.xg_tol_spin, 2, 1)
 
         ag.addWidget(QLabel("Integration Radius:"), 2, 2)
-        self.int_radius_edit = QLineEdit("2,4,10")
+        self.int_radius_edit = QLineEdit("4,5,9")
         ag.addWidget(self.int_radius_edit, 2, 3)
 
         root_layout.addWidget(adv_group)
@@ -270,7 +270,7 @@ class GandalfWindow(QMainWindow):
         ov = QVBoxLayout(other_group)
         self.other_flags_edit = QTextEdit()
         self.other_flags_edit.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
-        self.other_flags_edit.setPlainText("""--no-revalidate\n--no-half-pixel-shift\n--no-refine\n--no-non-hits-in-stream""")
+        self.other_flags_edit.setPlainText("""--no-revalidate\n--no-half-pixel-shift\n--no-refine\n--no-non-hits-in-stream\n--no-retry\n--fix-profile-radius=70000000\n""")
         ov.addWidget(self.other_flags_edit)
         root_layout.addWidget(other_group)
 

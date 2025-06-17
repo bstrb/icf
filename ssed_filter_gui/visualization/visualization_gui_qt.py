@@ -108,7 +108,7 @@ class VisualizerWindow(QWidget):
 
         print("Generating visualizations for output folder:", folder)
         try:
-            plot_indexing_rate(folder)
+            plot_indexing_rate(folder, save_path=os.path.join(folder, "indexing_rate_plots.png"))
             print("Visualization completed successfully.")
         except Exception as exc:
             print("Error during visualization:", exc)

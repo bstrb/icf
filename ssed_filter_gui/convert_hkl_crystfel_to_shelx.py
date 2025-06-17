@@ -99,6 +99,6 @@ def convert_hkl_crystfel_to_shelx(input_dir: str):
   
 if __name__ == "__main__":
 
-    # input_dir = "/home/bubl3932/files/MFM300_VIII/MFM_spot3_streams/filtered_metrics/merge-3"
-    input_dir = "/home/bubl3932/files/MFM300_VIII/MFM300_UK_2ndGrid_spot_4_220mm_0deg_150nm_100ms_20250524/xgandalf_iterations_max_radius_0.0_step_0.1/merge-offset-4mmm-noB-it5-nocorr"
+    input_dir = "/home/bubl3932/files/MFM300_VIII/MFM300_UK_2ndGrid_spot_4_220mm_0deg_150nm_50ms_20250524/MFM300_UK_2ndGrid_spot_4_220mm_0deg_150nm_50ms_20250524_2038/xgandalf_iterations_max_radius_1.0_step_0.1/filtered_metrics_1/merge/merge-quentin"
+    # input_dir = "/home/bubl3932/files/MFM300_VIII/MFM300_UK_2ndGrid_spot_4_220mm_0deg_150nm_100ms_20250524/xgandalf_iterations_max_radius_0.0_step_0.1/merge-offset-4mmm-noB-it5-nocorr"
     convert_hkl_crystfel_to_shelx(input_dir)

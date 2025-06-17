@@ -38,11 +38,13 @@ def process_indexing_metrics(stream_file_folder: str,
     """
     
     append_event_count(stream_file_folder)
+    unnormalizedcsv = "unnormalized_metrics" + f"_wrmsdtol_{wrmsd_tolerance}_itol_{indexing_tolerance}" + ".csv"
+    normalizedcsv = "normalized_metrics" + f"_wrmsdtol_{wrmsd_tolerance}_itol_{indexing_tolerance}" + ".csv"
 
     try:
         print(f"Evaluating multiple stream files")
-        create_unnormalized_csv(stream_file_folder, wrmsd_tolerance=wrmsd_tolerance, index_tolerance=indexing_tolerance)
-        normalize_csv(stream_file_folder, normalization_method=normalization_method)
+        create_unnormalized_csv(stream_file_folder, output_csv_name=unnormalizedcsv, wrmsd_tolerance=wrmsd_tolerance, index_tolerance=indexing_tolerance)
+        normalize_csv(stream_file_folder, input_csv_name=unnormalizedcsv, output_csv_name=normalizedcsv, normalization_method=normalization_method)
     except Exception as e:
         print(f"An error occurred during processing the stream files: {e}")
         traceback.print_exc()
