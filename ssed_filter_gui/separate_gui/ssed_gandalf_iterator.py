@@ -5,7 +5,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 
 # Import the indexing function.
-from gandalf_interations.gandalf_radial_iterator import gandalf_iterator
+from gandalf_iterations.gandalf_radial_iterator import gandalf_iterator
 
 # ==============================================================================
 # Import the necessary libraries for file handling and cleanup.

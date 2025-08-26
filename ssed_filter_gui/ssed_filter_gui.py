@@ -7,7 +7,7 @@ import separate_gui.ssed_gandalf_iterator as ssed_gandalf_iterator  # assuming t
 import separate_gui.ssed_visualization  as ssed_visualization # assuming this file is saved as ssed_visualization.py
 import separate_gui.ssed_calc_metrics  as ssed_calc_metrics # assuming this file is saved as ssed_calc_metrics.py
 import separate_gui.ssed_filter_combine  as ssed_filter_combine # assuming this file is saved as ssed_filter_combine.py
-
+ 
 def main():
     root = tk.Tk()
     root.title("SSED Workflow Including Gandalf Iterator and Index Metrics Based Filtering")
