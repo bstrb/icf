@@ -28,9 +28,8 @@ from concurrent.futures import (
 from typing import Dict, List, Set, Tuple
 from tqdm import tqdm
 
-BEGIN      = b"----- Begin chunk -----"
-END_LF     = b"----- End chunk -----\n"
-END_CRLF   = b"----- End chunk -----\r\n"
+BEGIN = b"----- Begin chunk -----"
+END   = b"----- End chunk -----\n"
 EVENT_PREFIX = b"Event:"
 
 # ────────────────────────────────────────────────────────────────────────────────
@@ -77,24 +76,16 @@ def _scan_one_file(task:Tuple[str,Set[str]]
         mm_len = mm.size()
 
         while pos < mm_len:
-            # be tolerant of LF or CRLF
-            next_end = mm.find(END_LF, pos)
-            terminator = END_LF
+            next_end = mm.find(END, pos)
             if next_end == -1:
-                next_end = mm.find(END_CRLF, pos)
-                terminator = END_CRLF
-                if next_end == -1:
-                    break
-
-            chunk_end = next_end + len(terminator)
+                break
+            chunk_end = next_end + len(END)
             chunk = mm[pos:chunk_end]
 
             # fast check for Event: line inside the chunk
             ev_pos = chunk.find(EVENT_PREFIX)
             if ev_pos != -1:
                 nl = chunk.find(b"\n", ev_pos)
-                if nl == -1:
-                    nl = len(chunk)
                 event_bytes = chunk[ev_pos+len(EVENT_PREFIX): nl].strip()
                 if event_bytes.startswith(b"//"):
                     event_bytes = event_bytes[2:].strip()
@@ -164,10 +155,8 @@ def write_stream_from_filtered_csv(
 
     # 3.3 Write combined stream in CSV order
     header_written = False
-    END_LF_txt   = END_LF.decode()
-    END_CRLF_txt = END_CRLF.decode()
+    END_txt = END.decode()
 
-    # note: keep default text mode; on Windows '\n' → '\r\n' automatically
     with open(output_stream_path, "w") as out:
         for fpath, evt in tqdm(rows, desc="Writing chunks", unit="chunk"):
             hdr, chunks = cache[fpath]
@@ -182,12 +171,8 @@ def write_stream_from_filtered_csv(
                 continue
 
             out.write(chunk)
-
-            # FIX: do NOT rstrip() here; just check actual suffix.
-            # Accept both LF and CRLF chunk endings to avoid double-appending.
-            if not (chunk.endswith(END_LF_txt) or chunk.endswith(END_CRLF_txt)):
-                # write exactly one terminator line (let OS translate '\n' if needed)
-                out.write(END_LF_txt)
+            if not chunk.rstrip().endswith(END_txt):
+                out.write(END_txt + "\n")
 
     print("[csv_to_stream]  Done →", output_stream_path)
 

@@ -1,21 +1,19 @@
 import os
 import csv
-import math
 import statistics
 from itertools import groupby
 
 def event_sort_key(event_str):
     """
     Splits an event number string on '-' and converts each part to a float.
-    Always returns a tuple, so sorting is well-defined even if conversion fails.
+    If conversion fails, returns the original string.
     """
     try:
         parts = event_str.split('-')
         return tuple(float(part) for part in parts)
     except Exception:
-        # Fallback: return a 1-tuple with the original string to keep key types consistent
-        return (event_str,)
-
+        return event_str
+    
 def normalize_csv(folder_path,
                   input_csv_name='unnormalized_metrics.csv',
                   output_csv_name='normalized_metrics.csv',
@@ -42,12 +40,14 @@ def normalize_csv(folder_path,
         return
 
     # Convert numeric columns to float
-    # Indices of numeric columns: 2..7 (the first two columns are strings)
+    # Indices of numeric columns: 2..7 (the first two columns are string)
     for row in rows:
         for i in range(2, 8):
             row[i] = float(row[i])
 
     # Build global metric arrays
+    # columns: 2 -> weighted_rmsd, 3 -> fraction_outliers, 4 -> length_deviation,
+    #          5 -> angle_deviation, 6 -> peak_ratio, 7 -> percentage_unindexed
     metric_keys = [
         'weighted_rmsd',
         'fraction_outliers',
@@ -73,27 +73,17 @@ def normalize_csv(folder_path,
             values = global_metrics[k]
             min_val, max_val = min(values), max(values)
             if max_val == min_val:
-                # No spread: set to 0.5 (midpoint of [0,1])
-                norm_values[k] = [0.5] * len(values)
+                # Avoid division by zero if there's no spread
+                norm_values[k] = [0.5]*len(values)
             else:
-                denom = (max_val - min_val)
-                norm_values[k] = [(v - min_val) / denom for v in values]
+                norm_values[k] = [(v - min_val)/(max_val-min_val) for v in values]
 
     elif normalization_method == 'zscore':
         for k in metric_keys:
             values = global_metrics[k]
-            # If all values are identical, stdev == 0. In that case, define all z-scores as 0.0.
-            if len(values) < 2:
-                norm_values[k] = [0.0] * len(values)
-                continue
             mean_val = statistics.mean(values)
-            stdev_val = statistics.stdev(values)
-            if not math.isfinite(stdev_val) or stdev_val == 0.0:
-                # No variance (or weird numeric); set all to 0.0
-                norm_values[k] = [0.0] * len(values)
-            else:
-                inv = 1.0 / stdev_val
-                norm_values[k] = [(v - mean_val) * inv for v in values]
+            stdev_val = statistics.stdev(values) if len(values) > 1 else 1
+            norm_values[k] = [(v - mean_val)/stdev_val for v in values]
     else:
         print(f"Unknown normalization method: {normalization_method}")
         return
@@ -107,20 +97,23 @@ def normalize_csv(folder_path,
         row[6] = norm_values['peak_ratio'][i]
         row[7] = norm_values['percentage_unindexed'][i]
 
-    # Sort by (event_number, percentage_unindexed)
-    rows.sort(key=lambda r: (event_sort_key(r[1]), r[7]))
+    # Sort or group if desired (e.g., by event_number ascending)
+    # event_number is row[1], but be mindful it's a string originally.
+    rows.sort(key=lambda r: (event_sort_key(r[1]), r[7]))  # secondary sort by percentage_unindexed
 
     # Write out the final CSV with normalized values
     with open(output_csv_path, 'w', newline='') as f:
         writer = csv.writer(f)
+        # Write the same columns as the original, with normalized numeric data
         writer.writerow(header)  # same original header
-        # Group by event number to replicate your grouping logic:
+        # Optionally group by event number to replicate your grouping logic:
         for event_num, group in groupby(rows, key=lambda r: r[1]):
             # Write a row that indicates the event group
-            writer.writerow([f"Event number: {event_num}"] + [""] * (len(header) - 1))
+            writer.writerow([f"Event number: {event_num}"] + [""]*(len(header)-1))
             for g in group:
                 writer.writerow(g)
 
+    # print(f"Normalized CSV written to {output_csv_path}")
     print(f"Wrote normalized CSV → {output_csv_path}")
 
 if __name__ == "__main__":
